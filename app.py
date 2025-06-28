@@ -10,7 +10,7 @@ st.set_page_config(
     page_title="Kayakability Dashboard", 
     page_icon="🛶", 
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="collapsed"
 )
 
 # Custom CSS for better styling
@@ -25,19 +25,21 @@ st.markdown("""
         font-weight: bold;
         margin-bottom: 0.5rem;
     }
-    .score-card {
+    .current-conditions {
         background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
-        padding: 2rem;
+        padding: 1.5rem;
         border-radius: 15px;
         border: 2px solid #0ea5e9;
         margin: 1rem 0;
+        height: 100%;
     }
     .metric-card {
         background: white;
-        padding: 1.5rem;
-        border-radius: 10px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        padding: 1rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         border-left: 4px solid #3b82f6;
+        margin-bottom: 0.5rem;
     }
     .status-great { color: #16a34a; font-weight: bold; }
     .status-caution { color: #eab308; font-weight: bold; }
@@ -48,6 +50,13 @@ st.markdown("""
         border-radius: 8px;
         border-left: 4px solid #3b82f6;
         margin: 0.5rem 0;
+    }
+    .compact-guide {
+        background: #f8fafc;
+        padding: 0.8rem;
+        border-radius: 8px;
+        border-left: 4px solid #3b82f6;
+        font-size: 0.9rem;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -85,11 +94,53 @@ def get_score_color_info(score):
     else:
         return "🔴", "Unsafe", "status-unsafe", "#dc2626"
 
+def create_simple_map(latest_data):
+    """Create a simple 2D map"""
+    # Color based on score
+    _, _, _, hex_color = get_score_color_info(latest_data['kayakability_score'])
+    
+    # Convert hex to RGB
+    rgb_color = tuple(int(hex_color[i:i+2], 16) for i in (1, 3, 5))
+    
+    map_data = pd.DataFrame({
+        'lat': [latest_data['lat']],
+        'lon': [latest_data['lon']],
+        'score': [latest_data['kayakability_score']],
+        'site_name': [latest_data['site_name']],
+        'discharge': [latest_data['discharge_cfs']],
+        'height': [latest_data['gage_height_ft']]
+    })
+    
+    view_state = pdk.ViewState(
+        latitude=latest_data['lat'],
+        longitude=latest_data['lon'],
+        zoom=10,
+        pitch=0,
+    )
+    
+    layer = pdk.Layer(
+        'ScatterplotLayer',
+        data=map_data,
+        get_position='[lon, lat]',
+        get_color=list(rgb_color) + [200],
+        get_radius=300,
+        pickable=True,
+        auto_highlight=True,
+    )
+    
+    return pdk.Deck(
+        layers=[layer],
+        initial_view_state=view_state,
+        tooltip={
+            "html": "<b>Site:</b> {site_name}<br/><b>Score:</b> {score}<br/><b>Discharge:</b> {discharge} CFS<br/><b>Height:</b> {height} ft",
+            "style": {"backgroundColor": "steelblue", "color": "white"}
+        }
+    )
+
 def create_trend_chart(df, days=30):
     """Create trend chart using Altair"""
     recent_data = df.tail(days).reset_index(drop=True)
     
-    # Score trend chart
     score_chart = alt.Chart(recent_data).mark_line(
         point=True, 
         strokeWidth=3,
@@ -100,7 +151,7 @@ def create_trend_chart(df, days=30):
         tooltip=['timestamp:T', 'kayakability_score:Q']
     ).properties(
         width='container',
-        height=200,
+        height=250,
         title='Kayakability Score Trend'
     )
     
@@ -124,69 +175,11 @@ def create_discharge_chart(df, days=30):
         tooltip=['timestamp:T', 'discharge_cfs:Q', 'gage_height_ft:Q']
     ).properties(
         width='container',
-        height=200,
+        height=250,
         title='Discharge Trend (CFS)'
     )
     
     return discharge_chart
-
-def create_score_histogram(df):
-    """Create score distribution using Altair"""
-    hist_chart = alt.Chart(df).mark_bar(
-        color='#3b82f6',
-        opacity=0.7
-    ).encode(
-        x=alt.X('kayakability_score:Q', bin=alt.Bin(maxbins=20), title='Kayakability Score'),
-        y=alt.Y('count()', title='Frequency'),
-        tooltip=['count()']
-    ).properties(
-        width='container',
-        height=300,
-        title='Score Distribution (Historical)'
-    )
-    
-    return hist_chart
-
-def create_enhanced_map(latest_data):
-    """Create an enhanced 3D map"""
-    # Color based on score
-    _, _, _, hex_color = get_score_color_info(latest_data['kayakability_score'])
-    
-    # Convert hex to RGB
-    rgb_color = tuple(int(hex_color[i:i+2], 16) for i in (1, 3, 5))
-    
-    map_data = pd.DataFrame({
-        'lat': [latest_data['lat']],
-        'lon': [latest_data['lon']],
-        'score': [latest_data['kayakability_score']],
-        'elevation': [latest_data['kayakability_score'] * 10]  # Scale for 3D effect
-    })
-    
-    view_state = pdk.ViewState(
-        latitude=latest_data['lat'],
-        longitude=latest_data['lon'],
-        zoom=11,
-        pitch=45,
-        bearing=0
-    )
-    
-    layer = pdk.Layer(
-        'ColumnLayer',
-        data=map_data,
-        get_position='[lon, lat]',
-        get_elevation='elevation',
-        elevation_scale=4,
-        radius=200,
-        get_fill_color=list(rgb_color) + [200],
-        pickable=True,
-        auto_highlight=True,
-    )
-    
-    return pdk.Deck(
-        layers=[layer],
-        initial_view_state=view_state,
-        tooltip={"text": "Score: {score}\nSite: Merrimack River"}
-    )
 
 # Load data
 df = load_data()
@@ -195,149 +188,119 @@ latest = df.iloc[-1]
 # Header
 st.markdown("<h1 class='main-header'>🛶 Kayakability Dashboard</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center; color: #64748b; font-size: 1.2rem;'>Real-time water conditions for safe kayaking on the Merrimack River</p>", unsafe_allow_html=True)
+st.markdown("---")
 
-# Sidebar for controls
-with st.sidebar:
-    st.markdown("### 🎛️ Dashboard Controls")
-    
-    # Trend days selector
-    trend_days = st.slider("Trend Analysis Days", 7, 90, 30)
-    
-    # Score threshold
-    score_threshold = st.slider("Alert Threshold", 0, 100, 50)
-    
-    st.markdown("---")
-    st.markdown("### 📊 Quick Stats")
-    
-    avg_score = df['kayakability_score'].mean()
-    good_days = len(df[df['kayakability_score'] >= 80])
-    caution_days = len(df[(df['kayakability_score'] >= 50) & (df['kayakability_score'] < 80)])
-    unsafe_days = len(df[df['kayakability_score'] < 50])
-    
-    st.metric("Total Records", len(df))
-    st.metric("Average Score", f"{avg_score:.1f}")
-    st.metric("Great Days", good_days, delta=f"{good_days/len(df)*100:.1f}%")
-    st.metric("Caution Days", caution_days)
-    st.metric("Unsafe Days", unsafe_days)
-
-# Main content
-col1, col2, col3 = st.columns([2, 1, 1])
+# Top section: Map (3/4) + Current Conditions (1/4)
+col1, col2 = st.columns([3, 1])
 
 with col1:
-    # Current conditions card
+    st.markdown("### 🗺️ Location Map")
+    map_chart = create_simple_map(latest)
+    selected_point = st.pydeck_chart(map_chart, on_select="rerun")
+
+with col2:
+    # Current conditions summary
     icon, status, css_class, color = get_score_color_info(latest['kayakability_score'])
     
     st.markdown(f"""
-    <div class="score-card">
-        <h2 style="margin: 0; color: #1e40af;">Current Conditions</h2>
-        <div style="display: flex; align-items: center; margin: 1rem 0;">
-            <span style="font-size: 3rem;">{icon}</span>
-            <div style="margin-left: 1rem;">
-                <h1 style="margin: 0; font-size: 3rem; color: #1e40af;">{latest['kayakability_score']:.0f}</h1>
-                <p class="{css_class}" style="margin: 0; font-size: 1.5rem;">{status}</p>
-            </div>
+    <div class="current-conditions">
+        <h3 style="margin: 0 0 1rem 0; color: #1e40af;">Current Conditions</h3>
+        <div style="text-align: center; margin-bottom: 1rem;">
+            <span style="font-size: 2.5rem;">{icon}</span>
+            <h2 style="margin: 0.5rem 0; color: #1e40af;">{latest['kayakability_score']:.0f}</h2>
+            <p class="{css_class}" style="margin: 0; font-size: 1.2rem;">{status}</p>
+        </div>
+        <div style="font-size: 0.9rem; color: #64748b;">
+            <p><strong>Discharge:</strong> {latest['discharge_cfs']:.0f} CFS</p>
+            <p><strong>Gage Height:</strong> {latest['gage_height_ft']:.1f} ft</p>
+            <p><strong>Updated:</strong> {latest['timestamp'].strftime('%m/%d %I:%M %p')}</p>
         </div>
     </div>
     """, unsafe_allow_html=True)
 
-with col2:
-    st.markdown(f"""
-    <div class="metric-card">
-        <h4 style="margin: 0; color: #64748b;">💧 Discharge</h4>
-        <h2 style="margin: 0.5rem 0 0 0; color: #1e40af;">{latest['discharge_cfs']:.0f}</h2>
-        <p style="margin: 0; color: #64748b; font-size: 0.9rem;">cubic feet/sec</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-with col3:
-    st.markdown(f"""
-    <div class="metric-card">
-        <h4 style="margin: 0; color: #64748b;">📏 Gage Height</h4>
-        <h2 style="margin: 0.5rem 0 0 0; color: #1e40af;">{latest['gage_height_ft']:.1f}</h2>
-        <p style="margin: 0; color: #64748b; font-size: 0.9rem;">feet</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-# Site information and alerts
+# Location & Status section
 st.markdown("---")
-col1, col2 = st.columns([1.5, 1])
+col1, col2 = st.columns([2, 1])
 
 with col1:
     st.markdown("### 📍 Location & Status")
     
-    # Alert section
-    if latest['kayakability_score'] < score_threshold:
-        st.error(f"⚠️ **Alert**: Current score ({latest['kayakability_score']:.0f}) is below your threshold ({score_threshold})")
-    else:
-        st.success(f"✅ **All Good**: Current conditions are above your threshold ({score_threshold})")
-    
-    # Location info
+    # Site information
     st.markdown(f"""
     <div class="info-box">
-        <strong>📍 Site:</strong> {latest['site_name']}<br>
-        <strong>🗺️ Coordinates:</strong> {latest['lat']:.4f}, {latest['lon']:.4f}<br>
-        <strong>🕐 Last Updated:</strong> {latest['timestamp'].strftime('%Y-%m-%d %I:%M %p')}
+        <strong>Site:</strong> {latest['site_name']}<br>
+        <strong>Coordinates:</strong> {latest['lat']:.4f}, {latest['lon']:.4f}<br>
+        <strong>Last Updated:</strong> {latest['timestamp'].strftime('%Y-%m-%d %I:%M %p')}
     </div>
     """, unsafe_allow_html=True)
+    
+    # Conditions interpretation
+    if latest['kayakability_score'] >= 80:
+        st.success("✅ **Excellent conditions** - Perfect for kayaking! Water levels are ideal for paddlers of all skill levels.")
+    elif latest['kayakability_score'] >= 50:
+        st.warning("⚠️ **Use caution** - Conditions are manageable but may be challenging. Recommended for experienced kayakers only.")
+    else:
+        st.error("🚫 **Unsafe conditions** - Water levels are dangerous for kayaking. Please avoid the water until conditions improve.")
 
 with col2:
     st.markdown("### 🎯 Score Guide")
     st.markdown("""
-    <div class="info-box">
-        <div style="margin: 0.5rem 0;"><span style="color: #16a34a;">🟢 <strong>80-100:</strong></span> Excellent conditions</div>
-        <div style="margin: 0.5rem 0;"><span style="color: #eab308;">🟡 <strong>50-79:</strong></span> Use caution</div>
-        <div style="margin: 0.5rem 0;"><span style="color: #dc2626;">🔴 <strong>0-49:</strong></span> Unsafe conditions</div>
+    <div class="compact-guide">
+        <strong style="color: #16a34a;">🟢 80-100:</strong> Excellent<br>
+        <strong style="color: #eab308;">🟡 50-79:</strong> Caution<br>
+        <strong style="color: #dc2626;">🔴 0-49:</strong> Unsafe
     </div>
     """, unsafe_allow_html=True)
-
-# Enhanced map
-st.markdown("### 🗺️ Interactive 3D Location Map")
-st.pydeck_chart(create_enhanced_map(latest))
 
 # Charts section
 st.markdown("---")
 col1, col2 = st.columns(2)
 
 with col1:
-    st.markdown("### 📈 Recent Trends")
-    trend_chart = create_trend_chart(df, trend_days)
+    st.markdown("### 📈 Score Trend (Last 30 Days)")
+    trend_chart = create_trend_chart(df, 30)
     st.altair_chart(trend_chart, use_container_width=True)
-    
-    st.markdown("### 💧 Discharge Pattern")
-    discharge_chart = create_discharge_chart(df, trend_days)
-    st.altair_chart(discharge_chart, use_container_width=True)
 
 with col2:
-    st.markdown("### 📊 Historical Distribution")
-    hist_chart = create_score_histogram(df)
-    st.altair_chart(hist_chart, use_container_width=True)
-    
-    # Summary statistics
-    st.markdown("### 📋 Summary Stats")
-    col_a, col_b = st.columns(2)
-    with col_a:
-        st.metric("Min Score", f"{df['kayakability_score'].min():.0f}")
-        st.metric("Max Discharge", f"{df['discharge_cfs'].max():.0f} CFS")
-    with col_b:
-        st.metric("Max Score", f"{df['kayakability_score'].max():.0f}")
-        st.metric("Max Height", f"{df['gage_height_ft'].max():.1f} ft")
+    st.markdown("### 💧 Discharge Pattern (Last 30 Days)")
+    discharge_chart = create_discharge_chart(df, 30)
+    st.altair_chart(discharge_chart, use_container_width=True)
+
+# Quick stats
+st.markdown("---")
+st.markdown("### 📊 Quick Statistics")
+col1, col2, col3, col4 = st.columns(4)
+
+with col1:
+    avg_score = df['kayakability_score'].mean()
+    st.metric("Average Score", f"{avg_score:.1f}")
+
+with col2:
+    good_days = len(df[df['kayakability_score'] >= 80])
+    st.metric("Great Days", good_days, delta=f"{good_days/len(df)*100:.0f}%")
+
+with col3:
+    max_discharge = df['discharge_cfs'].max()
+    st.metric("Max Discharge", f"{max_discharge:.0f} CFS")
+
+with col4:
+    recent_avg = df.tail(7)['kayakability_score'].mean()
+    overall_avg = df['kayakability_score'].mean()
+    delta = recent_avg - overall_avg
+    st.metric("7-Day Average", f"{recent_avg:.1f}", delta=f"{delta:+.1f}")
 
 # Data table (expandable)
 with st.expander("📋 View Recent Data"):
-    recent_data = df.tail(20)[['timestamp', 'kayakability_score', 'discharge_cfs', 'gage_height_ft']].copy()
+    recent_data = df.tail(10)[['timestamp', 'kayakability_score', 'discharge_cfs', 'gage_height_ft']].copy()
     recent_data['timestamp'] = recent_data['timestamp'].dt.strftime('%Y-%m-%d %H:%M')
-    recent_data = recent_data.round(2)
+    recent_data = recent_data.round(1)
     st.dataframe(recent_data, use_container_width=True)
 
 # Footer
 st.markdown("---")
-col1, col2, col3 = st.columns([1, 2, 1])
-with col2:
-    st.markdown("""
-    <div style="text-align: center; color: #94a3b8;">
-        <p>🛶 <strong>Kayakability Dashboard</strong> 🛶</p>
-        <p>Built by Timothy Nolan | Data updated daily at 9AM EST</p>
-        <p><small>This dashboard provides real-time water condition assessments for safe kayaking decisions.</small></p>
-        <p><small>💡 Tip: Use the sidebar controls to customize your view and set personal alert thresholds</small></p>
-    </div>
-    """, unsafe_allow_html=True)
+st.markdown("""
+<div style="text-align: center; color: #94a3b8; padding: 1rem;">
+    <p><strong>🛶 Kayakability Dashboard</strong> | Built by Timothy Nolan</p>
+    <p><small>Data updated daily at 9AM EST • Click the map marker for detailed conditions</small></p>
+</div>
+""", unsafe_allow_html=True)
