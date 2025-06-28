@@ -74,12 +74,10 @@ def load_data():
     """Load and preprocess the data from new folder structure"""
     data_folder = "data_exports"
     
-    # Try to load from new structure first
     combined_file = os.path.join(data_folder, "combined_data.csv")
     river_file = os.path.join(data_folder, "river_data.csv")
     weather_file = os.path.join(data_folder, "weather_data.csv")
     
-    # Check what files exist
     files_available = {
         'combined': os.path.exists(combined_file),
         'river': os.path.exists(river_file),
@@ -89,11 +87,9 @@ def load_data():
     
     try:
         if files_available['combined']:
-            # Load combined data (preferred)
             df = pd.read_csv(combined_file)
             df["timestamp"] = pd.to_datetime(df["timestamp"])
             
-            # Also try to load weather data separately for more detailed weather info
             weather_df = None
             if files_available['weather']:
                 try:
@@ -106,30 +102,25 @@ def load_data():
             return df, weather_df, files_available
             
         elif files_available['river']:
-            # Load river data only
             df = pd.read_csv(river_file)
             df["timestamp"] = pd.to_datetime(df["timestamp"])
             df = df.sort_values("timestamp")
             return df, None, files_available
             
         elif files_available['legacy']:
-            # Fall back to legacy file
             df = pd.read_csv("kayak_conditions.csv")
             df["timestamp"] = pd.to_datetime(df["timestamp"])
             df = df.sort_values("timestamp")
             return df, None, files_available
             
         else:
-            # No data files found, create sample data
             raise FileNotFoundError("No data files found")
             
     except Exception as e:
         st.warning(f"Error loading data: {e}. Using sample data.")
-        # Create sample data for demonstration
         dates = pd.date_range(start="2024-01-01", end="2024-12-31", freq="D")
         np.random.seed(42)
         
-        # Create data for multiple sites
         sites = [
             {"id": "01073500", "name": "Merrimack River below Concord River at Lowell, MA", "lat": 42.6334, "lon": -71.3162},
             {"id": "01100000", "name": "Merrimack River at Lowell, MA", "lat": 42.65, "lon": -71.30},
@@ -138,7 +129,7 @@ def load_data():
         
         all_data = []
         for site in sites:
-            for date in dates[::7]:  # Weekly data for sample
+            for date in dates[::7]:
                 discharge = np.random.normal(1500, 400)
                 gage_height = np.random.normal(3.5, 1)
                 score = max(0, min(100, 100 - abs(discharge - 1500) / 20))
@@ -164,7 +155,6 @@ def load_data():
         return df, None, files_available
 
 def get_score_color_info(score):
-    """Return color and status based on score"""
     if pd.isna(score):
         return "❓", "Unknown", "status-caution", "#64748b"
     elif score >= 80:
@@ -175,14 +165,11 @@ def get_score_color_info(score):
         return "🔴", "Unsafe", "status-unsafe", "#dc2626"
 
 def create_multi_site_map(df):
-    """Create a map showing all sites"""
-    # Get the latest data for each site
     if 'site_id' in df.columns:
         latest_by_site = df.groupby('site_id').last().reset_index()
     else:
         latest_by_site = df.tail(1).copy()
     
-    # Add color information for each site
     colors = []
     for _, row in latest_by_site.iterrows():
         _, _, _, hex_color = get_score_color_info(row.get('kayakability_score', 50))
@@ -191,7 +178,6 @@ def create_multi_site_map(df):
     
     latest_by_site['color'] = colors
     
-    # Create map centered on Merrimack River
     center_lat = latest_by_site['lat'].mean()
     center_lon = latest_by_site['lon'].mean()
     
@@ -222,11 +208,9 @@ def create_multi_site_map(df):
     )
 
 def create_trend_chart(df, days=30):
-    """Create trend chart using Altair"""
     recent_data = df.tail(days).reset_index(drop=True)
     
     if 'site_id' in df.columns and len(df['site_id'].unique()) > 1:
-        # Multi-site chart
         score_chart = alt.Chart(recent_data).mark_line(
             point=True, 
             strokeWidth=2
@@ -241,7 +225,6 @@ def create_trend_chart(df, days=30):
             title='Kayakability Score Trend by Site'
         )
     else:
-        # Single site chart
         score_chart = alt.Chart(recent_data).mark_line(
             point=True, 
             strokeWidth=3,
@@ -259,11 +242,9 @@ def create_trend_chart(df, days=30):
     return score_chart
 
 def create_discharge_chart(df, days=30):
-    """Create discharge chart using Altair"""
     recent_data = df.tail(days).reset_index(drop=True)
     
     if 'site_id' in df.columns and len(df['site_id'].unique()) > 1:
-        # Multi-site chart
         discharge_chart = alt.Chart(recent_data).mark_line(
             strokeWidth=2
         ).encode(
@@ -277,7 +258,6 @@ def create_discharge_chart(df, days=30):
             title='Discharge Trend by Site (CFS)'
         )
     else:
-        # Single site chart
         discharge_chart = alt.Chart(recent_data).mark_area(
             line={'stroke': '#06b6d4', 'strokeWidth': 2},
             color=alt.Gradient(
@@ -299,7 +279,6 @@ def create_discharge_chart(df, days=30):
     return discharge_chart
 
 def format_weather_info(row):
-    """Format weather information for display"""
     if pd.isna(row.get('weather_description')):
         return "Weather data not available"
     
@@ -312,11 +291,11 @@ def format_weather_info(row):
 # Load data
 df, weather_df, files_info = load_data()
 
-# Header with data source info
+# Header
 st.markdown("<h1 class='main-header'>🛶 Kayakability Dashboard</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center; color: #64748b; font-size: 1.2rem;'>Real-time water conditions for safe kayaking on the Merrimack River</p>", unsafe_allow_html=True)
 
-# Show data source status
+# Data source status
 if files_info.get('sample'):
     st.info("📋 Currently showing sample data. Upload your data files to see real conditions.")
 elif files_info.get('combined'):
@@ -328,19 +307,17 @@ else:
 
 st.markdown("---")
 
-# Handle multiple sites
+# Determine if multiple sites
 if 'site_id' in df.columns and len(df['site_id'].unique()) > 1:
-    # Multi-site data
     latest_by_site = df.groupby('site_id').last().reset_index()
     best_site = latest_by_site.loc[latest_by_site['kayakability_score'].idxmax()]
     latest = best_site
     is_multi_site = True
 else:
-    # Single site data (backward compatibility)
     latest = df.iloc[-1]
     is_multi_site = False
 
-# Top section: Map (3/4) + Current Conditions (1/4)
+# Layout: Map + Current Conditions
 col1, col2 = st.columns([3, 1])
 
 with col1:
@@ -349,10 +326,8 @@ with col1:
     st.pydeck_chart(map_chart)
 
 with col2:
-    # Current conditions summary - show best site
     icon, status, css_class, color = get_score_color_info(latest.get('kayakability_score'))
     
-    # Format values safely
     discharge_text = f"{latest.get('discharge_cfs', 0):.0f}" if pd.notna(latest.get('discharge_cfs')) else 'N/A'
     gage_height_text = f"{latest.get('gage_height_ft', 0):.1f}" if pd.notna(latest.get('gage_height_ft')) else 'N/A'
     
@@ -378,4 +353,37 @@ with col2:
         <div style="font-size: 0.85rem; color: #64748b;">
             <p><strong>Site:</strong> {display_name}</p>
             <p><strong>Discharge:</strong> {discharge_text} CFS</p>
-            <p><strong
+            <p><strong>Gage Height:</strong> {gage_height_text} ft</p>
+            <p><strong>Updated:</strong> {timestamp_text}</p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+# Weather info
+if 'weather_description' in df.columns and pd.notna(latest.get('weather_description')):
+    st.markdown("### 🌤️ Weather Conditions")
+    weather_info = format_weather_info(latest)
+    st.markdown(f"""
+    <div class="weather-card">
+        <strong>Current Weather:</strong> {weather_info}
+    </div>
+    """, unsafe_allow_html=True)
+
+# Location & Status
+st.markdown("---")
+col1, col2 = st.columns([2, 1])
+
+with col1:
+    st.markdown("### 📍 Location & Status")
+    
+    site_display_name = str(latest.get('site_name', 'Unknown Site')).replace("Merrimack River ", "").replace(" at ", " - ")
+    
+    if pd.notna(latest.get('timestamp')):
+        if isinstance(latest['timestamp'], str):
+            timestamp_full_text = pd.to_datetime(latest['timestamp']).strftime('%Y-%m-%d %I:%M %p')
+        else:
+            timestamp_full_text = latest['timestamp'].strftime('%Y-%m-%d %I:%M %p')
+    else:
+        timestamp_full_text = 'N/A'
+    
+   
