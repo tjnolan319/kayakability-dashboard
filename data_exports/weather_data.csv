@@ -1,0 +1,6 @@
+site_id,site_name,lat,lon,temperature_f,humidity_percent,wind_speed_mph,wind_direction,weather_description,precipitation_chance,weather_timestamp
+01073500,"Merrimack River below Concord River at Lowell, MA",42.6334,-71.3162,68,50,10,SSE,Sunny,10,2025-06-28T16:15:26.206734
+01100000,"Merrimack River at Lowell, MA",42.65,-71.3,68,50,10,SSE,Sunny,10,2025-06-28T16:15:27.509934
+01096500,"Merrimack River at North Chelmsford, MA",42.6278,-71.3667,68,50,10,SSE,Sunny,10,2025-06-28T16:15:29.232829
+01094000,"Merrimack River near Goffs Falls below Manchester, NH",43.0167,-71.4833,68,50,10,SSE,Sunny,10,2025-06-28T16:15:30.517190
+01092000,"Merrimack River at Franklin Junction, NH",43.4361,-71.6472,68,50,10,SSE,Sunny,10,2025-06-28T16:15:31.647664
