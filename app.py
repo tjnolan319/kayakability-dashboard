@@ -75,7 +75,8 @@ def load_data():
         np.random.seed(42)
         sample_data = {
             "timestamp": dates,
-            "site_name": ["Merrimack River - Lowell"] * len(dates),
+            "site_id": ["01073500"] * len(dates),
+            "site_name": ["Merrimack River below Concord River at Lowell, MA"] * len(dates),
             "discharge_cfs": np.random.normal(2000, 500, len(dates)).clip(500, 5000),
             "gage_height_ft": np.random.normal(8, 2, len(dates)).clip(3, 15),
             "lat": [42.6334] * len(dates),
@@ -94,36 +95,37 @@ def get_score_color_info(score):
     else:
         return "🔴", "Unsafe", "status-unsafe", "#dc2626"
 
-def create_simple_map(latest_data):
-    """Create a simple 2D map"""
-    # Color based on score
-    _, _, _, hex_color = get_score_color_info(latest_data['kayakability_score'])
+def create_multi_site_map(df):
+    """Create a map showing all sites"""
+    # Get the latest data for each site
+    latest_by_site = df.groupby('site_id').last().reset_index()
     
-    # Convert hex to RGB
-    rgb_color = tuple(int(hex_color[i:i+2], 16) for i in (1, 3, 5))
+    # Add color information for each site
+    colors = []
+    for _, row in latest_by_site.iterrows():
+        _, _, _, hex_color = get_score_color_info(row['kayakability_score'])
+        rgb_color = tuple(int(hex_color[i:i+2], 16) for i in (1, 3, 5))
+        colors.append(list(rgb_color) + [200])
     
-    map_data = pd.DataFrame({
-        'lat': [latest_data['lat']],
-        'lon': [latest_data['lon']],
-        'score': [latest_data['kayakability_score']],
-        'site_name': [latest_data['site_name']],
-        'discharge': [latest_data['discharge_cfs']],
-        'height': [latest_data['gage_height_ft']]
-    })
+    latest_by_site['color'] = colors
+    
+    # Create map centered on Merrimack River
+    center_lat = latest_by_site['lat'].mean()
+    center_lon = latest_by_site['lon'].mean()
     
     view_state = pdk.ViewState(
-        latitude=latest_data['lat'],
-        longitude=latest_data['lon'],
-        zoom=10,
+        latitude=center_lat,
+        longitude=center_lon,
+        zoom=9,
         pitch=0,
     )
     
     layer = pdk.Layer(
         'ScatterplotLayer',
-        data=map_data,
+        data=latest_by_site,
         get_position='[lon, lat]',
-        get_color=list(rgb_color) + [200],
-        get_radius=300,
+        get_color='color',
+        get_radius=400,
         pickable=True,
         auto_highlight=True,
     )
@@ -132,7 +134,7 @@ def create_simple_map(latest_data):
         layers=[layer],
         initial_view_state=view_state,
         tooltip={
-            "html": "<b>Site:</b> {site_name}<br/><b>Score:</b> {score}<br/><b>Discharge:</b> {discharge} CFS<br/><b>Height:</b> {height} ft",
+            "html": "<b>{site_name}</b><br/><b>Score:</b> {kayakability_score}<br/><b>Discharge:</b> {discharge_cfs} CFS<br/><b>Height:</b> {gage_height_ft} ft",
             "style": {"backgroundColor": "steelblue", "color": "white"}
         }
     )
@@ -183,7 +185,16 @@ def create_discharge_chart(df, days=30):
 
 # Load data
 df = load_data()
-latest = df.iloc[-1]
+
+# Handle multiple sites
+if 'site_id' in df.columns:
+    # Multi-site data
+    latest_by_site = df.groupby('site_id').last().reset_index()
+    best_site = latest_by_site.loc[latest_by_site['kayakability_score'].idxmax()]
+    latest = best_site
+else:
+    # Single site data (backward compatibility)
+    latest = df.iloc[-1]
 
 # Header
 st.markdown("<h1 class='main-header'>🛶 Kayakability Dashboard</h1>", unsafe_allow_html=True)
@@ -194,26 +205,30 @@ st.markdown("---")
 col1, col2 = st.columns([3, 1])
 
 with col1:
-    st.markdown("### 🗺️ Location Map")
-    map_chart = create_simple_map(latest)
+    st.markdown("### 🗺️ Merrimack River Monitoring Sites")
+    if 'site_id' in df.columns:
+        map_chart = create_multi_site_map(df)
+    else:
+        map_chart = create_simple_map(latest)
     selected_point = st.pydeck_chart(map_chart, on_select="rerun")
 
 with col2:
-    # Current conditions summary
+    # Current conditions summary - show best site
     icon, status, css_class, color = get_score_color_info(latest['kayakability_score'])
     
     st.markdown(f"""
     <div class="current-conditions">
-        <h3 style="margin: 0 0 1rem 0; color: #1e40af;">Current Conditions</h3>
+        <h3 style="margin: 0 0 1rem 0; color: #1e40af;">Best Conditions</h3>
         <div style="text-align: center; margin-bottom: 1rem;">
             <span style="font-size: 2.5rem;">{icon}</span>
             <h2 style="margin: 0.5rem 0; color: #1e40af;">{latest['kayakability_score']:.0f}</h2>
             <p class="{css_class}" style="margin: 0; font-size: 1.2rem;">{status}</p>
         </div>
-        <div style="font-size: 0.9rem; color: #64748b;">
-            <p><strong>Discharge:</strong> {latest['discharge_cfs']:.0f} CFS</p>
-            <p><strong>Gage Height:</strong> {latest['gage_height_ft']:.1f} ft</p>
-            <p><strong>Updated:</strong> {latest['timestamp'].strftime('%m/%d %I:%M %p')}</p>
+        <div style="font-size: 0.85rem; color: #64748b;">
+            <p><strong>Site:</strong> {latest['site_name'].split(' at ')[-1] if ' at ' in str(latest['site_name']) else latest['site_name']}</p>
+            <p><strong>Discharge:</strong> {latest['discharge_cfs']:.0f if pd.notna(latest['discharge_cfs']) else 'N/A'} CFS</p>
+            <p><strong>Gage Height:</strong> {latest['gage_height_ft']:.1f if pd.notna(latest['gage_height_ft']) else 'N/A'} ft</p>
+            <p><strong>Updated:</strong> {latest['timestamp'].strftime('%m/%d %I:%M %p') if pd.notna(latest['timestamp']) else 'N/A'}</p>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -226,11 +241,14 @@ with col1:
     st.markdown("### 📍 Location & Status")
     
     # Site information
+    site_display_name = latest['site_name'].replace("Merrimack River ", "").replace(" at ", " - ") if pd.notna(latest['site_name']) else "Unknown Site"
+    
     st.markdown(f"""
     <div class="info-box">
-        <strong>Site:</strong> {latest['site_name']}<br>
+        <strong>Site:</strong> {site_display_name}<br>
+        <strong>Site ID:</strong> {latest.get('site_id', 'N/A')}<br>
         <strong>Coordinates:</strong> {latest['lat']:.4f}, {latest['lon']:.4f}<br>
-        <strong>Last Updated:</strong> {latest['timestamp'].strftime('%Y-%m-%d %I:%M %p')}
+        <strong>Last Updated:</strong> {latest['timestamp'].strftime('%Y-%m-%d %I:%M %p') if pd.notna(latest['timestamp']) else 'N/A'}
     </div>
     """, unsafe_allow_html=True)
     
@@ -268,26 +286,48 @@ with col2:
 
 # Quick stats
 st.markdown("---")
-st.markdown("### 📊 Quick Statistics")
-col1, col2, col3, col4 = st.columns(4)
+if 'site_id' in df.columns:
+    st.markdown("### 📊 All Sites Overview")
+    
+    # Create columns for each site
+    sites = df['site_id'].unique()
+    cols = st.columns(min(len(sites), 4))
+    
+    for i, site_id in enumerate(sites):
+        site_data = df[df['site_id'] == site_id].iloc[-1]
+        icon, status, css_class, color = get_score_color_info(site_data['kayakability_score'])
+        
+        with cols[i % 4]:
+            site_short_name = site_data['site_name'].split(' at ')[-1] if ' at ' in str(site_data['site_name']) else site_data['site_name']
+            st.markdown(f"""
+            <div class="metric-card" style="text-align: center;">
+                <h4 style="margin: 0; color: #64748b; font-size: 0.8rem;">{site_short_name}</h4>
+                <div style="font-size: 1.5rem; margin: 0.5rem 0;">{icon}</div>
+                <h3 style="margin: 0; color: #1e40af;">{site_data['kayakability_score']:.0f}</h3>
+                <p class="{css_class}" style="margin: 0; font-size: 0.9rem;">{status}</p>
+            </div>
+            """, unsafe_allow_html=True)
+else:
+    st.markdown("### 📊 Quick Statistics")
+    col1, col2, col3, col4 = st.columns(4)
 
-with col1:
-    avg_score = df['kayakability_score'].mean()
-    st.metric("Average Score", f"{avg_score:.1f}")
+    with col1:
+        avg_score = df['kayakability_score'].mean()
+        st.metric("Average Score", f"{avg_score:.1f}")
 
-with col2:
-    good_days = len(df[df['kayakability_score'] >= 80])
-    st.metric("Great Days", good_days, delta=f"{good_days/len(df)*100:.0f}%")
+    with col2:
+        good_days = len(df[df['kayakability_score'] >= 80])
+        st.metric("Great Days", good_days, delta=f"{good_days/len(df)*100:.0f}%")
 
-with col3:
-    max_discharge = df['discharge_cfs'].max()
-    st.metric("Max Discharge", f"{max_discharge:.0f} CFS")
+    with col3:
+        max_discharge = df['discharge_cfs'].max()
+        st.metric("Max Discharge", f"{max_discharge:.0f} CFS")
 
-with col4:
-    recent_avg = df.tail(7)['kayakability_score'].mean()
-    overall_avg = df['kayakability_score'].mean()
-    delta = recent_avg - overall_avg
-    st.metric("7-Day Average", f"{recent_avg:.1f}", delta=f"{delta:+.1f}")
+    with col4:
+        recent_avg = df.tail(7)['kayakability_score'].mean()
+        overall_avg = df['kayakability_score'].mean()
+        delta = recent_avg - overall_avg
+        st.metric("7-Day Average", f"{recent_avg:.1f}", delta=f"{delta:+.1f}")
 
 # Data table (expandable)
 with st.expander("📋 View Recent Data"):
