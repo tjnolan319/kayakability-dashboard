@@ -579,7 +579,8 @@ with col2:
     else:
         timestamp_text = 'N/A'
     
-    st.markdown(f"""
+    # Create the HTML content
+    conditions_html = f"""
     <div class="condition-card">
         <h3 style="margin: 0 0 1rem 0; color: #1e293b; font-weight: 600;">
             {'🏆 Best Conditions' if is_multi_site else '📍 Current Conditions'}
@@ -616,7 +617,10 @@ with col2:
             </div>
         </div>
     </div>
-    """, unsafe_allow_html=True)
+    """
+    
+    # Display the HTML
+    st.markdown(conditions_html, unsafe_allow_html=True)
 
 # Weather section
 if 'weather_description' in df.columns and pd.notna(latest.get('weather_description')):
