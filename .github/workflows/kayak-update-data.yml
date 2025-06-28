@@ -26,6 +26,11 @@ jobs:
       - name: Run kayak data script
         run: python kayak_data_export.py
 
+      - name: Debug PAT_TOKEN presence
+        run: echo "PAT_TOKEN is set"
+        env:
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+
       - name: Commit updated CSV
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
