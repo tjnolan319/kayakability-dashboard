@@ -216,6 +216,11 @@ with col2:
     # Current conditions summary - show best site
     icon, status, css_class, color = get_score_color_info(latest['kayakability_score'])
     
+    # Format discharge and gage height values
+    discharge_text = f"{latest['discharge_cfs']:.0f}" if pd.notna(latest['discharge_cfs']) else 'N/A'
+    gage_height_text = f"{latest['gage_height_ft']:.1f}" if pd.notna(latest['gage_height_ft']) else 'N/A'
+    timestamp_text = latest['timestamp'].strftime('%m/%d %I:%M %p') if pd.notna(latest['timestamp']) else 'N/A'
+    
     st.markdown(f"""
     <div class="current-conditions">
         <h3 style="margin: 0 0 1rem 0; color: #1e40af;">Best Conditions</h3>
@@ -226,9 +231,9 @@ with col2:
         </div>
         <div style="font-size: 0.85rem; color: #64748b;">
             <p><strong>Site:</strong> {latest['site_name'].split(' at ')[-1] if ' at ' in str(latest['site_name']) else latest['site_name']}</p>
-            <p><strong>Discharge:</strong> {latest['discharge_cfs']:.0f if pd.notna(latest['discharge_cfs']) else 'N/A'} CFS</p>
-            <p><strong>Gage Height:</strong> {latest['gage_height_ft']:.1f if pd.notna(latest['gage_height_ft']) else 'N/A'} ft</p>
-            <p><strong>Updated:</strong> {latest['timestamp'].strftime('%m/%d %I:%M %p') if pd.notna(latest['timestamp']) else 'N/A'}</p>
+            <p><strong>Discharge:</strong> {discharge_text} CFS</p>
+            <p><strong>Gage Height:</strong> {gage_height_text} ft</p>
+            <p><strong>Updated:</strong> {timestamp_text}</p>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -242,13 +247,14 @@ with col1:
     
     # Site information
     site_display_name = latest['site_name'].replace("Merrimack River ", "").replace(" at ", " - ") if pd.notna(latest['site_name']) else "Unknown Site"
+    timestamp_full_text = latest['timestamp'].strftime('%Y-%m-%d %I:%M %p') if pd.notna(latest['timestamp']) else 'N/A'
     
     st.markdown(f"""
     <div class="info-box">
         <strong>Site:</strong> {site_display_name}<br>
         <strong>Site ID:</strong> {latest.get('site_id', 'N/A')}<br>
         <strong>Coordinates:</strong> {latest['lat']:.4f}, {latest['lon']:.4f}<br>
-        <strong>Last Updated:</strong> {latest['timestamp'].strftime('%Y-%m-%d %I:%M %p') if pd.notna(latest['timestamp']) else 'N/A'}
+        <strong>Last Updated:</strong> {timestamp_full_text}
     </div>
     """, unsafe_allow_html=True)
     
