@@ -3,9 +3,6 @@ import pandas as pd
 import datetime
 import altair as alt
 import pydeck as pdk
-import plotly.graph_objects as go
-import plotly.express as px
-from plotly.subplots import make_subplots
 import numpy as np
 
 # Page configuration
@@ -45,6 +42,13 @@ st.markdown("""
     .status-great { color: #16a34a; font-weight: bold; }
     .status-caution { color: #eab308; font-weight: bold; }
     .status-unsafe { color: #dc2626; font-weight: bold; }
+    .info-box {
+        background: #f8fafc;
+        padding: 1rem;
+        border-radius: 8px;
+        border-left: 4px solid #3b82f6;
+        margin: 0.5rem 0;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -72,93 +76,84 @@ def load_data():
         df["kayakability_score"] = (100 - (df["discharge_cfs"] - 1500).abs() / 50).clip(0, 100)
         return df
 
-def get_score_color(score):
+def get_score_color_info(score):
     """Return color and status based on score"""
     if score >= 80:
-        return "🟢", "Great", "status-great"
+        return "🟢", "Great", "status-great", "#16a34a"
     elif score >= 50:
-        return "🟡", "Caution", "status-caution"
+        return "🟡", "Caution", "status-caution", "#eab308"
     else:
-        return "🔴", "Unsafe", "status-unsafe"
+        return "🔴", "Unsafe", "status-unsafe", "#dc2626"
 
 def create_trend_chart(df, days=30):
-    """Create an interactive trend chart"""
-    recent_data = df.tail(days)
+    """Create trend chart using Altair"""
+    recent_data = df.tail(days).reset_index(drop=True)
     
-    fig = make_subplots(
-        rows=3, cols=1,
-        subplot_titles=('Kayakability Score', 'Discharge (CFS)', 'Gage Height (ft)'),
-        vertical_spacing=0.08,
-        shared_xaxes=True
+    # Score trend chart
+    score_chart = alt.Chart(recent_data).mark_line(
+        point=True, 
+        strokeWidth=3,
+        stroke='#3b82f6'
+    ).encode(
+        x=alt.X('timestamp:T', title='Date'),
+        y=alt.Y('kayakability_score:Q', title='Kayakability Score', scale=alt.Scale(domain=[0, 100])),
+        tooltip=['timestamp:T', 'kayakability_score:Q']
+    ).properties(
+        width='container',
+        height=200,
+        title='Kayakability Score Trend'
     )
     
-    # Score trend
-    fig.add_trace(
-        go.Scatter(
-            x=recent_data['timestamp'],
-            y=recent_data['kayakability_score'],
-            mode='lines+markers',
-            name='Score',
-            line=dict(color='#3b82f6', width=3),
-            fill='tonexty'
-        ),
-        row=1, col=1
-    )
-    
-    # Discharge trend
-    fig.add_trace(
-        go.Scatter(
-            x=recent_data['timestamp'],
-            y=recent_data['discharge_cfs'],
-            mode='lines+markers',
-            name='Discharge',
-            line=dict(color='#06b6d4', width=2)
-        ),
-        row=2, col=1
-    )
-    
-    # Gage height trend
-    fig.add_trace(
-        go.Scatter(
-            x=recent_data['timestamp'],
-            y=recent_data['gage_height_ft'],
-            mode='lines+markers',
-            name='Gage Height',
-            line=dict(color='#8b5cf6', width=2)
-        ),
-        row=3, col=1
-    )
-    
-    fig.update_layout(
-        height=600,
-        showlegend=False,
-        title_text="Recent Trends",
-        title_x=0.5
-    )
-    
-    return fig
+    return score_chart
 
-def create_score_distribution(df):
-    """Create score distribution chart"""
-    fig = px.histogram(
-        df, 
-        x='kayakability_score',
-        nbins=20,
-        title='Score Distribution (Historical)',
-        color_discrete_sequence=['#3b82f6']
+def create_discharge_chart(df, days=30):
+    """Create discharge chart using Altair"""
+    recent_data = df.tail(days).reset_index(drop=True)
+    
+    discharge_chart = alt.Chart(recent_data).mark_area(
+        line={'stroke': '#06b6d4', 'strokeWidth': 2},
+        color=alt.Gradient(
+            gradient='linear',
+            stops=[alt.GradientStop(color='#06b6d4', offset=0),
+                   alt.GradientStop(color='#e0f7fa', offset=1)],
+            x1=1, x2=1, y1=1, y2=0
+        )
+    ).encode(
+        x=alt.X('timestamp:T', title='Date'),
+        y=alt.Y('discharge_cfs:Q', title='Discharge (CFS)'),
+        tooltip=['timestamp:T', 'discharge_cfs:Q', 'gage_height_ft:Q']
+    ).properties(
+        width='container',
+        height=200,
+        title='Discharge Trend (CFS)'
     )
-    fig.update_layout(
-        xaxis_title="Kayakability Score",
-        yaxis_title="Frequency",
-        showlegend=False
+    
+    return discharge_chart
+
+def create_score_histogram(df):
+    """Create score distribution using Altair"""
+    hist_chart = alt.Chart(df).mark_bar(
+        color='#3b82f6',
+        opacity=0.7
+    ).encode(
+        x=alt.X('kayakability_score:Q', bin=alt.Bin(maxbins=20), title='Kayakability Score'),
+        y=alt.Y('count()', title='Frequency'),
+        tooltip=['count()']
+    ).properties(
+        width='container',
+        height=300,
+        title='Score Distribution (Historical)'
     )
-    return fig
+    
+    return hist_chart
 
 def create_enhanced_map(latest_data):
     """Create an enhanced 3D map"""
     # Color based on score
-    _, _, color_class = get_score_color(latest_data['kayakability_score'])
-    color = [0, 255, 0] if color_class == "status-great" else [255, 255, 0] if color_class == "status-caution" else [255, 0, 0]
+    _, _, _, hex_color = get_score_color_info(latest_data['kayakability_score'])
+    
+    # Convert hex to RGB
+    rgb_color = tuple(int(hex_color[i:i+2], 16) for i in (1, 3, 5))
     
     map_data = pd.DataFrame({
         'lat': [latest_data['lat']],
@@ -182,7 +177,7 @@ def create_enhanced_map(latest_data):
         get_elevation='elevation',
         elevation_scale=4,
         radius=200,
-        get_fill_color=color + [200],
+        get_fill_color=list(rgb_color) + [200],
         pickable=True,
         auto_highlight=True,
     )
@@ -205,31 +200,32 @@ st.markdown("<p style='text-align: center; color: #64748b; font-size: 1.2rem;'>R
 with st.sidebar:
     st.markdown("### 🎛️ Dashboard Controls")
     
-    # Date range selector
-    date_range = st.date_input(
-        "Select Date Range",
-        value=(df['timestamp'].min().date(), df['timestamp'].max().date()),
-        min_value=df['timestamp'].min().date(),
-        max_value=df['timestamp'].max().date()
-    )
-    
     # Trend days selector
     trend_days = st.slider("Trend Analysis Days", 7, 90, 30)
     
     # Score threshold
     score_threshold = st.slider("Alert Threshold", 0, 100, 50)
     
+    st.markdown("---")
     st.markdown("### 📊 Quick Stats")
+    
+    avg_score = df['kayakability_score'].mean()
+    good_days = len(df[df['kayakability_score'] >= 80])
+    caution_days = len(df[(df['kayakability_score'] >= 50) & (df['kayakability_score'] < 80)])
+    unsafe_days = len(df[df['kayakability_score'] < 50])
+    
     st.metric("Total Records", len(df))
-    st.metric("Average Score", f"{df['kayakability_score'].mean():.1f}")
-    st.metric("Days Above Threshold", len(df[df['kayakability_score'] >= score_threshold]))
+    st.metric("Average Score", f"{avg_score:.1f}")
+    st.metric("Great Days", good_days, delta=f"{good_days/len(df)*100:.1f}%")
+    st.metric("Caution Days", caution_days)
+    st.metric("Unsafe Days", unsafe_days)
 
 # Main content
 col1, col2, col3 = st.columns([2, 1, 1])
 
 with col1:
     # Current conditions card
-    icon, status, css_class = get_score_color(latest['kayakability_score'])
+    icon, status, css_class, color = get_score_color_info(latest['kayakability_score'])
     
     st.markdown(f"""
     <div class="score-card">
@@ -245,41 +241,57 @@ with col1:
     """, unsafe_allow_html=True)
 
 with col2:
-    st.markdown("""
+    st.markdown(f"""
     <div class="metric-card">
-        <h4 style="margin: 0; color: #64748b;">Discharge</h4>
-        <h2 style="margin: 0; color: #1e40af;">{:.0f} CFS</h2>
+        <h4 style="margin: 0; color: #64748b;">💧 Discharge</h4>
+        <h2 style="margin: 0.5rem 0 0 0; color: #1e40af;">{latest['discharge_cfs']:.0f}</h2>
+        <p style="margin: 0; color: #64748b; font-size: 0.9rem;">cubic feet/sec</p>
     </div>
-    """.format(latest['discharge_cfs']), unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
 with col3:
-    st.markdown("""
+    st.markdown(f"""
     <div class="metric-card">
-        <h4 style="margin: 0; color: #64748b;">Gage Height</h4>
-        <h2 style="margin: 0; color: #1e40af;">{:.1f} ft</h2>
+        <h4 style="margin: 0; color: #64748b;">📏 Gage Height</h4>
+        <h2 style="margin: 0.5rem 0 0 0; color: #1e40af;">{latest['gage_height_ft']:.1f}</h2>
+        <p style="margin: 0; color: #64748b; font-size: 0.9rem;">feet</p>
     </div>
-    """.format(latest['gage_height_ft']), unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
-# Site information
+# Site information and alerts
 st.markdown("---")
-col1, col2 = st.columns(2)
+col1, col2 = st.columns([1.5, 1])
 
 with col1:
-    st.markdown("### 📍 Location Details")
-    st.write(f"**Site:** {latest['site_name']}")
-    st.write(f"**Coordinates:** {latest['lat']:.4f}, {latest['lon']:.4f}")
-    st.write(f"**Last Updated:** {latest['timestamp'].strftime('%Y-%m-%d %I:%M %p')}")
+    st.markdown("### 📍 Location & Status")
+    
+    # Alert section
+    if latest['kayakability_score'] < score_threshold:
+        st.error(f"⚠️ **Alert**: Current score ({latest['kayakability_score']:.0f}) is below your threshold ({score_threshold})")
+    else:
+        st.success(f"✅ **All Good**: Current conditions are above your threshold ({score_threshold})")
+    
+    # Location info
+    st.markdown(f"""
+    <div class="info-box">
+        <strong>📍 Site:</strong> {latest['site_name']}<br>
+        <strong>🗺️ Coordinates:</strong> {latest['lat']:.4f}, {latest['lon']:.4f}<br>
+        <strong>🕐 Last Updated:</strong> {latest['timestamp'].strftime('%Y-%m-%d %I:%M %p')}
+    </div>
+    """, unsafe_allow_html=True)
 
 with col2:
-    st.markdown("### 🎯 Score Interpretation")
+    st.markdown("### 🎯 Score Guide")
     st.markdown("""
-    - **🟢 80-100:** Excellent conditions, safe for all skill levels
-    - **🟡 50-79:** Use caution, suitable for experienced kayakers
-    - **🔴 0-49:** Unsafe conditions, avoid kayaking
-    """)
+    <div class="info-box">
+        <div style="margin: 0.5rem 0;"><span style="color: #16a34a;">🟢 <strong>80-100:</strong></span> Excellent conditions</div>
+        <div style="margin: 0.5rem 0;"><span style="color: #eab308;">🟡 <strong>50-79:</strong></span> Use caution</div>
+        <div style="margin: 0.5rem 0;"><span style="color: #dc2626;">🔴 <strong>0-49:</strong></span> Unsafe conditions</div>
+    </div>
+    """, unsafe_allow_html=True)
 
 # Enhanced map
-st.markdown("### 🗺️ Interactive 3D Map")
+st.markdown("### 🗺️ Interactive 3D Location Map")
 st.pydeck_chart(create_enhanced_map(latest))
 
 # Charts section
@@ -287,28 +299,35 @@ st.markdown("---")
 col1, col2 = st.columns(2)
 
 with col1:
-    st.markdown("### 📈 Trend Analysis")
+    st.markdown("### 📈 Recent Trends")
     trend_chart = create_trend_chart(df, trend_days)
-    st.plotly_chart(trend_chart, use_container_width=True)
+    st.altair_chart(trend_chart, use_container_width=True)
+    
+    st.markdown("### 💧 Discharge Pattern")
+    discharge_chart = create_discharge_chart(df, trend_days)
+    st.altair_chart(discharge_chart, use_container_width=True)
 
 with col2:
-    st.markdown("### 📊 Score Distribution")
-    dist_chart = create_score_distribution(df)
-    st.plotly_chart(dist_chart, use_container_width=True)
+    st.markdown("### 📊 Historical Distribution")
+    hist_chart = create_score_histogram(df)
+    st.altair_chart(hist_chart, use_container_width=True)
+    
+    # Summary statistics
+    st.markdown("### 📋 Summary Stats")
+    col_a, col_b = st.columns(2)
+    with col_a:
+        st.metric("Min Score", f"{df['kayakability_score'].min():.0f}")
+        st.metric("Max Discharge", f"{df['discharge_cfs'].max():.0f} CFS")
+    with col_b:
+        st.metric("Max Score", f"{df['kayakability_score'].max():.0f}")
+        st.metric("Max Height", f"{df['gage_height_ft'].max():.1f} ft")
 
 # Data table (expandable)
 with st.expander("📋 View Recent Data"):
-    st.dataframe(
-        df.tail(10)[['timestamp', 'kayakability_score', 'discharge_cfs', 'gage_height_ft']].round(2),
-        use_container_width=True
-    )
-
-# Alerts section
-st.markdown("---")
-if latest['kayakability_score'] < score_threshold:
-    st.warning(f"⚠️ **Alert**: Current score ({latest['kayakability_score']:.0f}) is below your threshold ({score_threshold})")
-else:
-    st.success(f"✅ **All Good**: Current conditions are above your threshold ({score_threshold})")
+    recent_data = df.tail(20)[['timestamp', 'kayakability_score', 'discharge_cfs', 'gage_height_ft']].copy()
+    recent_data['timestamp'] = recent_data['timestamp'].dt.strftime('%Y-%m-%d %H:%M')
+    recent_data = recent_data.round(2)
+    st.dataframe(recent_data, use_container_width=True)
 
 # Footer
 st.markdown("---")
@@ -319,5 +338,6 @@ with col2:
         <p>🛶 <strong>Kayakability Dashboard</strong> 🛶</p>
         <p>Built by Timothy Nolan | Data updated daily at 9AM EST</p>
         <p><small>This dashboard provides real-time water condition assessments for safe kayaking decisions.</small></p>
+        <p><small>💡 Tip: Use the sidebar controls to customize your view and set personal alert thresholds</small></p>
     </div>
     """, unsafe_allow_html=True)
