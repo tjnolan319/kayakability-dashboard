@@ -2,7 +2,7 @@ name: Daily Kayak Data Update
 
 on:
   schedule:
-    - cron: '0 9 * * *'  # Runs every day at 9:00 AM UTC (adjust if you want)
+    - cron: '0 9 * * *'  # Runs every day at 9:00 AM UTC
   workflow_dispatch:     # Allows manual triggering from GitHub UI
 
 jobs:
@@ -16,7 +16,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.x'  # Use your Python version here
+          python-version: '3.x'
 
       - name: Install dependencies
         run: |
@@ -32,5 +32,5 @@ jobs:
           git config --local user.name "github-actions[bot]"
           git add kayak_conditions.csv
           git commit -m "Automated update of kayak_conditions.csv"
-          git push
+          git push https://${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }} HEAD:${{ github.ref }}
         continue-on-error: true  # Skip if no changes to commit
