@@ -1,5 +1,6 @@
 import requests
 import csv
+import os
 from datetime import datetime
 
 # --- Configuration ---
@@ -43,20 +44,16 @@ for s in series:
 # --- Scoring function ---
 def score_kayakability(discharge, gage):
     score = 100
-
-    # Example logic – adjust as needed
     if discharge is not None:
         if discharge < 500:
             score -= 30
         elif discharge > 2500:
             score -= 30
-
     if gage is not None:
         if gage < 1.5:
             score -= 20
         elif gage > 5:
             score -= 20
-
     return max(score, 0)
 
 # --- Apply scoring ---
@@ -64,13 +61,16 @@ output['kayakability_score'] = score_kayakability(
     output['discharge_cfs'], output['gage_height_ft']
 )
 
-# --- Write to CSV ---
+# --- Write to CSV (append if exists) ---
 output_file = 'kayak_conditions.csv'
-with open(output_file, 'w', newline='') as f:
+file_exists = os.path.isfile(output_file)
+
+with open(output_file, 'a', newline='') as f:
     writer = csv.DictWriter(f, fieldnames=output.keys())
-    writer.writeheader()
+    if not file_exists:
+        writer.writeheader()
     writer.writerow(output)
 
-print(f"✅ Data written to {output_file}")
+print(f"✅ Data appended to {output_file}")
 print(f"🛶 Site: {output['site_name']}")
 print(f"📊 Score: {output['kayakability_score']}")
