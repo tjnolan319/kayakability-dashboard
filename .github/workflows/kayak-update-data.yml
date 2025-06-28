@@ -26,11 +26,10 @@ jobs:
       - name: Run kayak data script
         run: python kayak_data_export.py
 
-       - name: Commit updated CSV
+      - name: Commit updated CSV
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git add kayak_conditions.csv
           git commit -m "Automated update of kayak_conditions.csv" || echo "No changes to commit"
           git push https://${{ secrets.PAT_TOKEN }}@github.com/${{ github.repository }} HEAD:${{ github.ref }}
-
