@@ -4,3 +4,8 @@ site_id,site_name,discharge_cfs,gage_height_ft,timestamp,lat,lon,kayakability_sc
 01096500,"Merrimack River at North Chelmsford, MA",285.0,1.57,2025-06-28T11:45:00.000-04:00,42.6278,-71.3667,29
 01094000,"Merrimack River near Goffs Falls below Manchester, NH",126.0,2.78,2025-06-28T11:30:00.000-04:00,43.0167,-71.4833,55
 01092000,"Merrimack River at Franklin Junction, NH",2880.0,4.17,2025-06-28T11:30:00.000-04:00,43.4361,-71.6472,36
+01073500,"Merrimack River below Concord River at Lowell, MA",76.8,1.46,2025-06-29T04:15:00.000-04:00,42.6334,-71.3162,21
+01100000,"Merrimack River at Lowell, MA",3630.0,42.74,2025-06-29T04:30:00.000-04:00,42.65,-71.3,20
+01096500,"Merrimack River at North Chelmsford, MA",267.0,1.51,2025-06-29T04:45:00.000-04:00,42.6278,-71.3667,27
+01094000,"Merrimack River near Goffs Falls below Manchester, NH",140.0,2.84,2025-06-29T04:30:00.000-04:00,43.0167,-71.4833,56
+01092000,"Merrimack River at Franklin Junction, NH",2860.0,4.16,2025-06-29T04:30:00.000-04:00,43.4361,-71.6472,36
