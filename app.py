@@ -727,74 +727,98 @@ if 'historical' in data and 'forecast' in data:
                 </div>
                 """, unsafe_allow_html=True)
     
-   else:
-        st.markdown("### ⚠️ No Optimal Windows Found")
-        st.markdown("No kayaking windows with scores ≥70 were identified in the next 10 days. Check back later for updated forecasts.")
-
-    # Charts section
-    st.markdown("---")
-    st.markdown("### 📈 Detailed Forecasts")
+       else:
+            st.markdown("### ⚠️ No Optimal Windows Found")
+            st.markdown("No kayaking windows with scores ≥70 were identified in the next 10 days. Check back later for updated forecasts.")
     
-    col1, col2 = st.columns(2, gap="large")
-    
-    with col1:
-        st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-        timeline_chart = create_forecast_timeline_chart(historical_df, forecast_df)
-        st.altair_chart(timeline_chart, use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    with col2:
-        st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-        discharge_chart = create_discharge_forecast_chart(historical_df, forecast_df)
-        st.altair_chart(discharge_chart, use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-    
-    # Detailed site information
-    st.markdown("---")
-    st.markdown("### 🎯 Site-Specific Analysis")
-    
-    # Site selector
-    sites = forecast_df['site_name'].unique()
-    selected_site = st.selectbox("Select a site for detailed analysis:", sites)
-    
-    if selected_site:
-        site_forecast = forecast_df[forecast_df['site_name'] == selected_site]
-        site_historical = historical_df[historical_df['site_name'] == selected_site]
+        # Charts section
+        st.markdown("---")
+        st.markdown("### 📈 Detailed Forecasts")
         
-        col1, col2, col3 = st.columns(3)
+        col1, col2 = st.columns(2, gap="large")
         
         with col1:
-            # 24-hour outlook
-            next_24h = site_forecast[site_forecast['timestamp'] <= datetime.datetime.now() + datetime.timedelta(hours=24)]
-            if len(next_24h) > 0:
-                st.markdown("#### 🌅 Next 24 Hours")
-                avg_score = next_24h['kayakability_score'].mean()
-                icon, status, css_class, color, status_class = get_score_info(avg_score)
-                
-                st.markdown(f"""
-                <div class="forecast-card">
-                    <div class="score-display">
-                        <div class="score-icon">{icon}</div>
-                        <div class="score-number" style="color: {color};">{avg_score:.0f}</div>
-                        <div class="score-status {css_class}">{status}</div>
-                    </div>
-                    <div class="metric-row">
-                        <span class="metric-label">Avg Discharge</span>
-                        <span class="metric-value">{next_24h['discharge_cfs'].mean():.0f} CFS</span>
-                    </div>
-                    <div class="metric-row">
-                        <span class="metric-label">Peak Score</span>
-                        <span class="metric-value">{next_24h['kayakability_score'].max():.0f}</span>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+            st.markdown('<div class="chart-container">', unsafe_allow_html=True)
+            timeline_chart = create_forecast_timeline_chart(historical_df, forecast_df)
+            st.altair_chart(timeline_chart, use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
         
         with col2:
-            # 3-day outlook
-            next_3d = site_forecast[site_forecast['timestamp'] <= datetime.datetime.now() + datetime.timedelta(days=3)]
-            if len(next_3d) > 0:
-                st.markdown("#### 🗓️ Next 3 Days")
-                avg_score = next_3d['kayakability_score'].mean()
+            st.markdown('<div class="chart-container">', unsafe_allow_html=True)
+            discharge_chart = create_discharge_forecast_chart(historical_df, forecast_df)
+            st.altair_chart(discharge_chart, use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+        
+        # Detailed site information
+        st.markdown("---")
+        st.markdown("### 🎯 Site-Specific Analysis")
+        
+        # Site selector
+        sites = forecast_df['site_name'].unique()
+        selected_site = st.selectbox("Select a site for detailed analysis:", sites)
+        
+        if selected_site:
+            site_forecast = forecast_df[forecast_df['site_name'] == selected_site]
+            site_historical = historical_df[historical_df['site_name'] == selected_site]
+            
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                # 24-hour outlook
+                next_24h = site_forecast[site_forecast['timestamp'] <= datetime.datetime.now() + datetime.timedelta(hours=24)]
+                if len(next_24h) > 0:
+                    st.markdown("#### 🌅 Next 24 Hours")
+                    avg_score = next_24h['kayakability_score'].mean()
+                    icon, status, css_class, color, status_class = get_score_info(avg_score)
+                    
+                    st.markdown(f"""
+                    <div class="forecast-card">
+                        <div class="score-display">
+                            <div class="score-icon">{icon}</div>
+                            <div class="score-number" style="color: {color};">{avg_score:.0f}</div>
+                            <div class="score-status {css_class}">{status}</div>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Avg Discharge</span>
+                            <span class="metric-value">{next_24h['discharge_cfs'].mean():.0f} CFS</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Peak Score</span>
+                            <span class="metric-value">{next_24h['kayakability_score'].max():.0f}</span>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+            
+            with col2:
+                # 3-day outlook
+                next_3d = site_forecast[site_forecast['timestamp'] <= datetime.datetime.now() + datetime.timedelta(days=3)]
+                if len(next_3d) > 0:
+                    st.markdown("#### 🗓️ Next 3 Days")
+                    avg_score = next_3d['kayakability_score'].mean()
+                    icon, status, css_class, color, status_class = get_score_info(avg_score)
+                    
+                    st.markdown(f"""
+                    <div class="forecast-card">
+                        <div class="score-display">
+                            <div class="score-icon">{icon}</div>
+                            <div class="score-number" style="color: {color};">{avg_score:.0f}</div>
+                            <div class="score-status {css_class}">{status}</div>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Good Hours</span>
+                            <span class="metric-value">{len(next_3d[next_3d['kayakability_score'] >= 70])}</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-label">Excellent Hours</span>
+                            <span class="metric-value">{len(next_3d[next_3d['kayakability_score'] >= 85])}</span>
+                        </div>
+                    </div>
+                    """, unsafe_allow_html=True)
+            
+            with col3:
+                # 10-day outlook
+                st.markdown("#### 📊 Full Forecast")
+                avg_score = site_forecast['kayakability_score'].mean()
                 icon, status, css_class, color, status_class = get_score_info(avg_score)
                 
                 st.markdown(f"""
@@ -805,88 +829,64 @@ if 'historical' in data and 'forecast' in data:
                         <div class="score-status {css_class}">{status}</div>
                     </div>
                     <div class="metric-row">
-                        <span class="metric-label">Good Hours</span>
-                        <span class="metric-value">{len(next_3d[next_3d['kayakability_score'] >= 70])}</span>
+                        <span class="metric-label">Total Hours</span>
+                        <span class="metric-value">{len(site_forecast)}</span>
                     </div>
                     <div class="metric-row">
-                        <span class="metric-label">Excellent Hours</span>
-                        <span class="metric-value">{len(next_3d[next_3d['kayakability_score'] >= 85])}</span>
+                        <span class="metric-label">Kayakable Hours</span>
+                        <span class="metric-value">{len(site_forecast[site_forecast['kayakability_score'] >= 50])}</span>
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
-        
-        with col3:
-            # 10-day outlook
-            st.markdown("#### 📊 Full Forecast")
-            avg_score = site_forecast['kayakability_score'].mean()
-            icon, status, css_class, color, status_class = get_score_info(avg_score)
             
-            st.markdown(f"""
-            <div class="forecast-card">
-                <div class="score-display">
-                    <div class="score-icon">{icon}</div>
-                    <div class="score-number" style="color: {color};">{avg_score:.0f}</div>
-                    <div class="score-status {css_class}">{status}</div>
-                </div>
-                <div class="metric-row">
-                    <span class="metric-label">Total Hours</span>
-                    <span class="metric-value">{len(site_forecast)}</span>
-                </div>
-                <div class="metric-row">
-                    <span class="metric-label">Kayakable Hours</span>
-                    <span class="metric-value">{len(site_forecast[site_forecast['kayakability_score'] >= 50])}</span>
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        # Hourly breakdown table
-        st.markdown("#### 📋 Hourly Forecast (Next 48 Hours)")
-        next_48h = site_forecast[site_forecast['timestamp'] <= datetime.datetime.now() + datetime.timedelta(hours=48)]
-        
-        if len(next_48h) > 0:
-            # Create display dataframe
-            display_df = next_48h.copy()
-            display_df['Date'] = display_df['timestamp'].dt.strftime('%m/%d')
-            display_df['Time'] = display_df['timestamp'].dt.strftime('%I:%M %p')
-            display_df['Score'] = display_df['kayakability_score'].round(0).astype(int)
-            display_df['Discharge'] = display_df['discharge_cfs'].round(0).astype(int)
-            display_df['Gage Height'] = display_df['gage_height_ft'].round(1)
-            display_df['Status'] = display_df['kayakability_score'].apply(lambda x: get_score_info(x)[1])
+            # Hourly breakdown table
+            st.markdown("#### 📋 Hourly Forecast (Next 48 Hours)")
+            next_48h = site_forecast[site_forecast['timestamp'] <= datetime.datetime.now() + datetime.timedelta(hours=48)]
             
-            # Display every 3rd hour to avoid overcrowding
-            display_df = display_df.iloc[::3]
-            
-            st.dataframe(
-                display_df[['Date', 'Time', 'Score', 'Status', 'Discharge', 'Gage Height']],
-                use_container_width=True,
-                hide_index=True
-            )
-
-    # Footer section
-    st.markdown("---")
-    st.markdown("### ℹ️ About This Forecast")
+            if len(next_48h) > 0:
+                # Create display dataframe
+                display_df = next_48h.copy()
+                display_df['Date'] = display_df['timestamp'].dt.strftime('%m/%d')
+                display_df['Time'] = display_df['timestamp'].dt.strftime('%I:%M %p')
+                display_df['Score'] = display_df['kayakability_score'].round(0).astype(int)
+                display_df['Discharge'] = display_df['discharge_cfs'].round(0).astype(int)
+                display_df['Gage Height'] = display_df['gage_height_ft'].round(1)
+                display_df['Status'] = display_df['kayakability_score'].apply(lambda x: get_score_info(x)[1])
+                
+                # Display every 3rd hour to avoid overcrowding
+                display_df = display_df.iloc[::3]
+                
+                st.dataframe(
+                    display_df[['Date', 'Time', 'Score', 'Status', 'Discharge', 'Gage Height']],
+                    use_container_width=True,
+                    hide_index=True
+                )
     
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.markdown("""
-        **Kayakability Scoring:**
-        - **85-100**: Excellent conditions
-        - **70-84**: Good for most kayakers  
-        - **50-69**: Fair, suitable for experienced paddlers
-        - **25-49**: Poor conditions, not recommended
-        - **0-24**: Dangerous conditions
-        """)
-    
-    with col2:
-        st.markdown("""
-        **Data Sources:**
-        - USGS Water Data Services
-        - National Weather Service
-        - Historical flow patterns
-        - Real-time gage measurements
-        - 10-day hydrologic forecasts
-        """)
-    
-    # Update timestamp
-    st.markdown(f"<div style='text-align: center; color: #64748b; margin-top: 2rem;'>Last updated: {datetime.datetime.now().strftime('%Y-%m-%d %I:%M %p')}</div>", unsafe_allow_html=True)
+        # Footer section
+        st.markdown("---")
+        st.markdown("### ℹ️ About This Forecast")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("""
+            **Kayakability Scoring:**
+            - **85-100**: Excellent conditions
+            - **70-84**: Good for most kayakers  
+            - **50-69**: Fair, suitable for experienced paddlers
+            - **25-49**: Poor conditions, not recommended
+            - **0-24**: Dangerous conditions
+            """)
+        
+        with col2:
+            st.markdown("""
+            **Data Sources:**
+            - USGS Water Data Services
+            - National Weather Service
+            - Historical flow patterns
+            - Real-time gage measurements
+            - 10-day hydrologic forecasts
+            """)
+        
+        # Update timestamp
+        st.markdown(f"<div style='text-align: center; color: #64748b; margin-top: 2rem;'>Last updated: {datetime.datetime.now().strftime('%Y-%m-%d %I:%M %p')}</div>", unsafe_allow_html=True)
