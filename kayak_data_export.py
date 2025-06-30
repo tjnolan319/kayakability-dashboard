@@ -56,71 +56,55 @@ merrimack_sites = {
 }
 
 def fetch_hourly_usgs_data(site_id, days_back=7):
-    """Fetch hourly USGS data for the past N days"""
     base_url = "https://waterservices.usgs.gov/nwis/iv/"
-    
-    # Calculate date range
-    end_date = datetime.now()
+    end_date = datetime.utcnow()
     start_date = end_date - timedelta(days=days_back)
-    
+
     params = {
         'format': 'json',
         'sites': site_id,
-        'parameterCd': '00060,00065',  # discharge and gage height
+        'parameterCd': '00060,00065',
         'startDT': start_date.strftime('%Y-%m-%dT%H:%M:%S'),
         'endDT': end_date.strftime('%Y-%m-%dT%H:%M:%S'),
         'siteStatus': 'active'
     }
-    
+
     try:
         response = requests.get(base_url, params=params, timeout=15)
         response.raise_for_status()
         data = response.json()
-        
+
         if 'value' not in data or 'timeSeries' not in data['value']:
             return pd.DataFrame()
-            
-        # Parse the time series data
-        discharge_data = []
-        gage_data = []
-        
+
+        dfs = {}
         for series in data['value']['timeSeries']:
-            param_code = series['variable']['variableCode'][0]['value']
-            
-            if series['values'] and series['values'][0]['value']:
-                for value_point in series['values'][0]['value']:
-                    timestamp = pd.to_datetime(value_point['dateTime'])
-                    value = float(value_point['value'])
-                    
-                    if param_code == '00060':  # discharge
-                        discharge_data.append({
-                            'datetime': timestamp,
-                            'discharge_cfs': value
-                        })
-                    elif param_code == '00065':  # gage height
-                        gage_data.append({
-                            'datetime': timestamp,
-                            'gage_height_ft': value
-                        })
-        
-        # Convert to DataFrames and merge
-        df_discharge = pd.DataFrame(discharge_data)
-        df_gage = pd.DataFrame(gage_data)
-        
-        if df_discharge.empty or df_gage.empty:
+            param = series['variable']['variableCode'][0]['value']
+            records = series['values'][0]['value']
+
+            df = pd.DataFrame([{
+                'datetime': pd.to_datetime(v['dateTime'], utc=True),
+                param: float(v['value'])
+            } for v in records if v.get('value') not in ['Ice', 'Eqp']])
+
+            dfs[param] = df
+
+        if '00060' not in dfs or '00065' not in dfs:
             return pd.DataFrame()
-        
-        # Merge on datetime
-        df = pd.merge(df_discharge, df_gage, on='datetime', how='outer')
-        df = df.sort_values('datetime').reset_index(drop=True)
-        
-        # Fill missing values with forward fill
-        df = df.fillna(method='ffill').fillna(method='bfill')
-        
+
+        df = pd.merge_asof(
+            dfs['00060'].sort_values('datetime'),
+            dfs['00065'].sort_values('datetime'),
+            on='datetime',
+            tolerance=pd.Timedelta('1H'),
+            direction='nearest'
+        )
+
+        df.rename(columns={'00060': 'discharge_cfs', '00065': 'gage_height_ft'}, inplace=True)
         return df
-        
+
     except Exception as e:
-        print(f"⚠️  Error fetching USGS data for {site_id}: {e}")
+        print(f"⚠️  Error fetching data for {site_id}: {e}")
         return pd.DataFrame()
 
 def calculate_kayakability_score(discharge, gage_height, ideal_discharge_range, ideal_gage_range):
