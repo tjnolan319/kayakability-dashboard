@@ -5,16 +5,17 @@ import altair as alt
 import pydeck as pdk
 import numpy as np
 import os
+from pathlib import Path
 
 # Page configuration
 st.set_page_config(
-    page_title="Kayakability Dashboard", 
+    page_title="Kayakability Forecast Dashboard", 
     page_icon="🛶", 
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# Enhanced CSS for cleaner design
+# Enhanced CSS for modern forecasting design
 st.markdown("""
 <style>
     /* Import Google Fonts */
@@ -52,7 +53,7 @@ st.markdown("""
     }
     
     /* Card components */
-    .condition-card {
+    .forecast-card {
         background: linear-gradient(135deg, #ffffff, #f8fafc);
         padding: 2rem;
         border-radius: 16px;
@@ -60,36 +61,41 @@ st.markdown("""
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         height: 100%;
         transition: all 0.3s ease;
+        margin-bottom: 1rem;
     }
     
-    .condition-card:hover {
+    .forecast-card:hover {
         transform: translateY(-2px);
         box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     }
     
-    .metric-card {
-        background: #ffffff;
+    .window-card {
+        background: linear-gradient(135deg, #ecfdf5, #d1fae5);
         padding: 1.5rem;
         border-radius: 12px;
-        border: 1px solid #f1f5f9;
-        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
-        margin-bottom: 1rem;
+        border: 1px solid #10b981;
+        margin: 0.5rem 0;
         transition: all 0.2s ease;
     }
     
-    .metric-card:hover {
-        border-color: #cbd5e1;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    .window-card:hover {
+        background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+        transform: translateY(-1px);
     }
     
-    .weather-card {
-        background: linear-gradient(135deg, #fef3c7, #fbbf24);
-        padding: 1.5rem;
-        border-radius: 12px;
-        border: 1px solid #f59e0b;
-        margin: 1rem 0;
-        color: #92400e;
-        font-weight: 500;
+    .window-card.excellent {
+        background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+        border-color: #059669;
+    }
+    
+    .window-card.good {
+        background: linear-gradient(135deg, #f0f9ff, #dbeafe);
+        border-color: #3b82f6;
+    }
+    
+    .window-card.fair {
+        background: linear-gradient(135deg, #fefce8, #fef3c7);
+        border-color: #f59e0b;
     }
     
     /* Score styling */
@@ -125,15 +131,42 @@ st.markdown("""
     .status-poor { color: #dc2626; }
     .status-dangerous { color: #991b1b; }
     
-    /* Info sections */
-    .info-section {
-        background: #f8fafc;
+    /* Forecast timeline */
+    .timeline-container {
+        background: #ffffff;
         padding: 1.5rem;
         border-radius: 12px;
-        border-left: 4px solid #3b82f6;
+        border: 1px solid #e2e8f0;
         margin: 1rem 0;
+        box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
     }
     
+    .timeline-item {
+        display: flex;
+        align-items: center;
+        padding: 1rem;
+        border-left: 4px solid #e2e8f0;
+        margin: 0.5rem 0;
+        background: #f8fafc;
+        border-radius: 0 8px 8px 0;
+    }
+    
+    .timeline-item.excellent {
+        border-left-color: #059669;
+        background: linear-gradient(90deg, #ecfdf5, #f8fafc);
+    }
+    
+    .timeline-item.good {
+        border-left-color: #3b82f6;
+        background: linear-gradient(90deg, #eff6ff, #f8fafc);
+    }
+    
+    .timeline-item.fair {
+        border-left-color: #f59e0b;
+        background: linear-gradient(90deg, #fefce8, #f8fafc);
+    }
+    
+    /* Metric styling */
     .metric-row {
         display: flex;
         justify-content: space-between;
@@ -156,6 +189,32 @@ st.markdown("""
         color: #1e293b;
     }
     
+    /* Alert styling */
+    .alert {
+        padding: 1rem;
+        border-radius: 8px;
+        margin: 1rem 0;
+        font-weight: 500;
+    }
+    
+    .alert.success {
+        background: #ecfdf5;
+        color: #065f46;
+        border: 1px solid #10b981;
+    }
+    
+    .alert.warning {
+        background: #fefce8;
+        color: #92400e;
+        border: 1px solid #f59e0b;
+    }
+    
+    .alert.info {
+        background: #eff6ff;
+        color: #1e40af;
+        border: 1px solid #3b82f6;
+    }
+    
     /* Chart containers */
     .chart-container {
         background: #ffffff;
@@ -165,21 +224,6 @@ st.markdown("""
         margin: 1rem 0;
         box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
     }
-    
-    /* Status indicator */
-    .status-indicator {
-        display: inline-block;
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        margin-right: 8px;
-    }
-    
-    .status-indicator.excellent { background-color: #059669; }
-    .status-indicator.good { background-color: #16a34a; }
-    .status-indicator.fair { background-color: #ca8a04; }
-    .status-indicator.poor { background-color: #dc2626; }
-    .status-indicator.dangerous { background-color: #991b1b; }
     
     /* Responsive adjustments */
     @media (max-width: 768px) {
@@ -194,123 +238,173 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 @st.cache_data
-def load_data():
-    """Load and preprocess the data from new folder structure"""
-    data_folder = "data_exports"
-    
-    combined_file = os.path.join(data_folder, "combined_data.csv")
-    river_file = os.path.join(data_folder, "river_data.csv")
-    weather_file = os.path.join(data_folder, "weather_data.csv")
-    
-    files_available = {
-        'combined': os.path.exists(combined_file),
-        'river': os.path.exists(river_file),
-        'weather': os.path.exists(weather_file),
-        'legacy': os.path.exists("kayak_conditions.csv")
+def load_forecast_data():
+    """Load historical and forecast data from the new system"""
+    data_files = {
+        'historical': 'historical_hourly_data.csv',
+        'forecast': 'forecast_data.csv',
+        'windows': 'optimal_windows.csv'
     }
     
-    try:
-        if files_available['combined']:
-            df = pd.read_csv(combined_file)
-            df["timestamp"] = pd.to_datetime(df["timestamp"])
-            
-            weather_df = None
-            if files_available['weather']:
-                try:
-                    weather_df = pd.read_csv(weather_file)
-                    weather_df["weather_timestamp"] = pd.to_datetime(weather_df["weather_timestamp"])
-                except Exception as e:
-                    st.warning(f"Could not load weather data: {e}")
-            
-            df = df.sort_values("timestamp")
-            return df, weather_df, files_available
-            
-        elif files_available['river']:
-            df = pd.read_csv(river_file)
-            df["timestamp"] = pd.to_datetime(df["timestamp"])
-            df = df.sort_values("timestamp")
-            return df, None, files_available
-            
-        elif files_available['legacy']:
-            df = pd.read_csv("kayak_conditions.csv")
-            df["timestamp"] = pd.to_datetime(df["timestamp"])
-            df = df.sort_values("timestamp")
-            return df, None, files_available
-            
-        else:
-            raise FileNotFoundError("No data files found")
-            
-    except Exception as e:
-        st.warning(f"Error loading data: {e}. Using sample data.")
-        dates = pd.date_range(start="2024-01-01", end="2024-12-31", freq="D")
-        np.random.seed(42)
-        
-        sites = [
-            {"id": "01073500", "name": "Merrimack River below Concord River at Lowell, MA", "lat": 42.6334, "lon": -71.3162},
-            {"id": "01100000", "name": "Merrimack River at Lowell, MA", "lat": 42.65, "lon": -71.30},
-            {"id": "01096500", "name": "Merrimack River at North Chelmsford, MA", "lat": 42.6278, "lon": -71.3667}
-        ]
-        
-        all_data = []
-        for site in sites:
-            for date in dates[::7]:
-                discharge = np.random.normal(1500, 400)
-                gage_height = np.random.normal(3.5, 1)
+    loaded_data = {}
+    files_status = {}
+    
+    for key, filename in data_files.items():
+        if os.path.exists(filename):
+            try:
+                df = pd.read_csv(filename)
+                if key in ['historical', 'forecast']:
+                    df['timestamp'] = pd.to_datetime(df['timestamp'])
+                    df = df.sort_values('timestamp')
+                elif key == 'windows':
+                    df['start_time'] = pd.to_datetime(df['start_time'])
+                    df['end_time'] = pd.to_datetime(df['end_time'])
+                    df = df.sort_values('start_time')
                 
-                all_data.append({
-                    "timestamp": date,
-                    "site_id": site["id"],
-                    "site_name": site["name"],
-                    "discharge_cfs": max(300, discharge),
-                    "gage_height_ft": max(1, gage_height),
-                    "lat": site["lat"],
-                    "lon": site["lon"],
-                    "temperature_f": np.random.normal(65, 15),
-                    "humidity_percent": np.random.normal(60, 20),
-                    "wind_speed_mph": np.random.normal(8, 4),
-                    "weather_description": np.random.choice(["Sunny", "Cloudy", "Partly Cloudy", "Light Rain"]),
-                    "weather_timestamp": date
-                })
-        
-        df = pd.DataFrame(all_data)
-        # Apply enhanced scoring after creating the dataframe
-        df['kayakability_score'] = df.apply(calculate_enhanced_kayakability_score, axis=1)
-        files_available = {'sample': True}
-        return df, None, files_available
+                loaded_data[key] = df
+                files_status[key] = True
+            except Exception as e:
+                st.error(f"Error loading {filename}: {e}")
+                files_status[key] = False
+        else:
+            files_status[key] = False
+    
+    # If no data files exist, create sample data
+    if not any(files_status.values()):
+        loaded_data = create_sample_forecast_data()
+        files_status['sample'] = True
+    
+    return loaded_data, files_status
 
-def calculate_enhanced_kayakability_score(row):
-    """
-    Enhanced kayakability scoring algorithm
-    Considers multiple factors with weighted importance
-    """
+def create_sample_forecast_data():
+    """Create sample forecast data for demonstration"""
+    now = datetime.datetime.now()
+    
+    # Historical data (past 7 days)
+    historical_dates = pd.date_range(
+        start=now - datetime.timedelta(days=7),
+        end=now,
+        freq='H'
+    )
+    
+    # Forecast data (next 10 days)
+    forecast_dates = pd.date_range(
+        start=now + datetime.timedelta(hours=1),
+        end=now + datetime.timedelta(days=10),
+        freq='H'
+    )
+    
+    sites = [
+        {"site_id": "01073500", "site_name": "Merrimack River below Concord River at Lowell, MA", "lat": 42.6334, "lon": -71.3162},
+        {"site_id": "01100000", "site_name": "Merrimack River at Lowell, MA", "lat": 42.65, "lon": -71.30}
+    ]
+    
+    # Generate historical data
+    historical_data = []
+    np.random.seed(42)
+    
+    for site in sites:
+        for date in historical_dates:
+            # Add some hourly variation
+            hour_factor = np.sin(date.hour * np.pi / 12) * 0.2 + 1
+            day_factor = np.sin(date.day * np.pi / 15) * 0.3 + 1
+            
+            discharge = np.random.normal(1500, 300) * hour_factor * day_factor
+            gage_height = np.random.normal(3.5, 0.8) * hour_factor
+            
+            historical_data.append({
+                'timestamp': date,
+                'site_id': site['site_id'],
+                'site_name': site['site_name'],
+                'discharge_cfs': max(300, discharge),
+                'gage_height_ft': max(1, gage_height),
+                'lat': site['lat'],
+                'lon': site['lon']
+            })
+    
+    # Generate forecast data
+    forecast_data = []
+    for site in sites:
+        for date in forecast_dates:
+            hour_factor = np.sin(date.hour * np.pi / 12) * 0.2 + 1
+            day_factor = np.sin(date.day * np.pi / 15) * 0.3 + 1
+            
+            discharge = np.random.normal(1400, 250) * hour_factor * day_factor
+            gage_height = np.random.normal(3.3, 0.7) * hour_factor
+            
+            forecast_data.append({
+                'timestamp': date,
+                'site_id': site['site_id'],
+                'site_name': site['site_name'],
+                'discharge_cfs': max(300, discharge),
+                'gage_height_ft': max(1, gage_height),
+                'lat': site['lat'],
+                'lon': site['lon'],
+                'is_forecast': True
+            })
+    
+    # Calculate kayakability scores
+    historical_df = pd.DataFrame(historical_data)
+    forecast_df = pd.DataFrame(forecast_data)
+    
+    historical_df['kayakability_score'] = historical_df.apply(calculate_kayakability_score, axis=1)
+    forecast_df['kayakability_score'] = forecast_df.apply(calculate_kayakability_score, axis=1)
+    
+    # Generate optimal windows
+    windows_data = []
+    for i, site in enumerate(sites):
+        site_forecast = forecast_df[forecast_df['site_id'] == site['site_id']]
+        good_periods = site_forecast[site_forecast['kayakability_score'] >= 70]
+        
+        if len(good_periods) > 0:
+            # Create some sample windows
+            for j in range(min(5, len(good_periods) // 3)):
+                start_idx = j * 3
+                if start_idx < len(good_periods):
+                    start_time = good_periods.iloc[start_idx]['timestamp']
+                    end_time = start_time + datetime.timedelta(hours=3)
+                    avg_score = good_periods.iloc[start_idx:start_idx+3]['kayakability_score'].mean()
+                    
+                    windows_data.append({
+                        'site_id': site['site_id'],
+                        'site_name': site['site_name'],
+                        'start_time': start_time,
+                        'end_time': end_time,
+                        'duration_hours': 3,
+                        'avg_score': avg_score,
+                        'min_score': good_periods.iloc[start_idx:start_idx+3]['kayakability_score'].min(),
+                        'max_score': good_periods.iloc[start_idx:start_idx+3]['kayakability_score'].max()
+                    })
+    
+    windows_df = pd.DataFrame(windows_data)
+    
+    return {
+        'historical': historical_df,
+        'forecast': forecast_df,
+        'windows': windows_df
+    }
+
+def calculate_kayakability_score(row):
+    """Calculate kayakability score based on conditions"""
     discharge = row.get('discharge_cfs', 1000)
     gage_height = row.get('gage_height_ft', 3.0)
-    wind_speed = row.get('wind_speed_mph', 5)
-    temp = row.get('temperature_f', 65)
     
-    # Optimal ranges for kayaking
+    # Optimal ranges
     optimal_discharge_min = 800
     optimal_discharge_max = 2500
     optimal_gage_min = 2.5
     optimal_gage_max = 5.0
-    max_safe_wind = 15
-    comfortable_temp_min = 50
-    comfortable_temp_max = 85
     
-    # Calculate individual factor scores (0-100)
-    
-    # Discharge score (40% weight)
+    # Discharge score (60% weight)
     if optimal_discharge_min <= discharge <= optimal_discharge_max:
         discharge_score = 100
     elif discharge < optimal_discharge_min:
-        # Too low - exponential penalty
         discharge_score = max(0, 100 * (discharge / optimal_discharge_min) ** 1.5)
     else:
-        # Too high - steeper penalty for safety
         excess_ratio = (discharge - optimal_discharge_max) / optimal_discharge_max
         discharge_score = max(0, 100 * np.exp(-2 * excess_ratio))
     
-    # Gage height score (30% weight)
+    # Gage height score (40% weight)
     if optimal_gage_min <= gage_height <= optimal_gage_max:
         gage_score = 100
     elif gage_height < optimal_gage_min:
@@ -319,33 +413,11 @@ def calculate_enhanced_kayakability_score(row):
         excess_ratio = (gage_height - optimal_gage_max) / optimal_gage_max
         gage_score = max(0, 100 * np.exp(-1.5 * excess_ratio))
     
-    # Wind score (20% weight)
-    if wind_speed <= max_safe_wind:
-        wind_score = max(0, 100 - (wind_speed / max_safe_wind * 30))
-    else:
-        # Dangerous wind conditions
-        wind_score = max(0, 20 - (wind_speed - max_safe_wind) * 5)
-    
-    # Temperature score (10% weight)
-    if comfortable_temp_min <= temp <= comfortable_temp_max:
-        temp_score = 100
-    elif temp < comfortable_temp_min:
-        temp_score = max(0, 100 - (comfortable_temp_min - temp) * 2)
-    else:
-        temp_score = max(0, 100 - (temp - comfortable_temp_max) * 1.5)
-    
-    # Calculate weighted final score
-    final_score = (
-        discharge_score * 0.40 +
-        gage_score * 0.30 +
-        wind_score * 0.20 +
-        temp_score * 0.10
-    )
-    
+    final_score = discharge_score * 0.6 + gage_score * 0.4
     return min(100, max(0, final_score))
 
-def get_enhanced_score_info(score):
-    """Enhanced scoring system with 5 levels"""
+def get_score_info(score):
+    """Get score information and styling"""
     if pd.isna(score):
         return "❓", "Unknown", "status-fair", "#64748b", "unknown"
     elif score >= 85:
@@ -359,113 +431,76 @@ def get_enhanced_score_info(score):
     else:
         return "🔴", "Dangerous", "status-dangerous", "#991b1b", "dangerous"
 
-def get_score_description(score):
-    """Get detailed description for each score range"""
-    if pd.isna(score):
-        return "Conditions unknown - exercise caution"
-    elif score >= 85:
-        return "Perfect conditions for kayaking. Enjoy your paddle!"
-    elif score >= 70:
-        return "Good conditions with minor considerations. Safe for most paddlers."
-    elif score >= 50:
-        return "Fair conditions. Suitable for experienced paddlers only."
-    elif score >= 25:
-        return "Poor conditions. High risk - advanced paddlers only."
-    else:
-        return "Dangerous conditions. Do not kayak - safety risk is too high."
-
-def create_enhanced_map(df):
-    """Create an enhanced map visualization"""
-    if 'site_id' in df.columns:
-        latest_by_site = df.groupby('site_id').last().reset_index()
-    else:
-        latest_by_site = df.tail(1).copy()
+def create_forecast_timeline_chart(historical_df, forecast_df):
+    """Create a timeline chart showing historical and forecast data"""
+    # Mark historical vs forecast data
+    historical_df = historical_df.copy()
+    forecast_df = forecast_df.copy()
+    historical_df['data_type'] = 'Historical'
+    forecast_df['data_type'] = 'Forecast'
     
-    colors = []
-    for _, row in latest_by_site.iterrows():
-        _, _, _, hex_color, _ = get_enhanced_score_info(row.get('kayakability_score', 50))
-        rgb_color = tuple(int(hex_color[i:i+2], 16) for i in (1, 3, 5))
-        colors.append(list(rgb_color) + [220])
+    # Combine data
+    combined_df = pd.concat([historical_df, forecast_df], ignore_index=True)
     
-    latest_by_site['color'] = colors
-    
-    center_lat = latest_by_site['lat'].mean()
-    center_lon = latest_by_site['lon'].mean()
-    
-    view_state = pdk.ViewState(
-        latitude=center_lat,
-        longitude=center_lon,
-        zoom=10,
-        pitch=0,
-    )
-    
-    layer = pdk.Layer(
-        'ScatterplotLayer',
-        data=latest_by_site,
-        get_position='[lon, lat]',
-        get_color='color',
-        get_radius=500,
-        pickable=True,
-        auto_highlight=True,
-    )
-    
-    return pdk.Deck(
-        layers=[layer],
-        initial_view_state=view_state,
-        tooltip={
-            "html": "<b>{site_name}</b><br/><b>Score:</b> {kayakability_score:.0f}<br/><b>Discharge:</b> {discharge_cfs:.0f} CFS<br/><b>Height:</b> {gage_height_ft:.1f} ft",
-            "style": {"backgroundColor": "#1e293b", "color": "white", "fontSize": "14px", "borderRadius": "8px"}
-        }
-    )
-
-def create_modern_trend_chart(df, days=30):
-    """Create modern trend chart with better styling"""
-    recent_data = df.tail(days).reset_index(drop=True)
-    
-    base_chart = alt.Chart(recent_data).add_selection(
+    # Create the chart
+    base_chart = alt.Chart(combined_df).add_selection(
         alt.selection_interval(bind='scales')
     )
     
-    if 'site_id' in df.columns and len(df['site_id'].unique()) > 1:
-        line_chart = base_chart.mark_line(
-            strokeWidth=3,
-            point=alt.OverlayMarkDef(size=80, filled=True)
-        ).encode(
-            x=alt.X('timestamp:T', title='Date', axis=alt.Axis(grid=True)),
-            y=alt.Y('kayakability_score:Q', title='Kayakability Score', scale=alt.Scale(domain=[0, 100])),
-            color=alt.Color('site_id:N', 
-                          title='Site ID',
-                          scale=alt.Scale(scheme='category10')),
-            tooltip=['timestamp:T', 'kayakability_score:Q', 'site_name:N', 'discharge_cfs:Q']
-        )
-    else:
-        line_chart = base_chart.mark_line(
-            strokeWidth=4,
-            stroke='#3b82f6',
-            point=alt.OverlayMarkDef(size=100, filled=True, stroke='white', strokeWidth=2)
-        ).encode(
-            x=alt.X('timestamp:T', title='Date', axis=alt.Axis(grid=True)),
-            y=alt.Y('kayakability_score:Q', title='Kayakability Score', scale=alt.Scale(domain=[0, 100])),
-            tooltip=['timestamp:T', 'kayakability_score:Q', 'discharge_cfs:Q', 'gage_height_ft:Q']
-        )
+    # Historical data line
+    historical_line = base_chart.transform_filter(
+        alt.datum.data_type == 'Historical'
+    ).mark_line(
+        strokeWidth=3,
+        stroke='#3b82f6'
+    ).encode(
+        x=alt.X('timestamp:T', title='Date & Time'),
+        y=alt.Y('kayakability_score:Q', title='Kayakability Score', scale=alt.Scale(domain=[0, 100])),
+        color=alt.Color('site_id:N', title='Site'),
+        tooltip=['timestamp:T', 'kayakability_score:Q', 'site_name:N', 'discharge_cfs:Q']
+    )
     
-    # Add reference lines for score thresholds
+    # Forecast data line (dashed)
+    forecast_line = base_chart.transform_filter(
+        alt.datum.data_type == 'Forecast'
+    ).mark_line(
+        strokeWidth=3,
+        strokeDash=[5, 5]
+    ).encode(
+        x=alt.X('timestamp:T', title='Date & Time'),
+        y=alt.Y('kayakability_score:Q', title='Kayakability Score', scale=alt.Scale(domain=[0, 100])),
+        color=alt.Color('site_id:N', title='Site'),
+        tooltip=['timestamp:T', 'kayakability_score:Q', 'site_name:N', 'discharge_cfs:Q']
+    )
+    
+    # Reference lines
     rules = alt.Chart(pd.DataFrame({
         'score': [85, 70, 50, 25],
         'label': ['Excellent', 'Good', 'Fair', 'Poor']
     })).mark_rule(
-        strokeDash=[5, 5],
+        strokeDash=[3, 3],
         opacity=0.5
     ).encode(
         y='score:Q',
         color=alt.value('#64748b')
     )
     
-    return (line_chart + rules).properties(
+    # Current time line
+    now_line = alt.Chart(pd.DataFrame({
+        'now': [datetime.datetime.now()]
+    })).mark_rule(
+        strokeWidth=2,
+        stroke='red',
+        opacity=0.7
+    ).encode(
+        x='now:T'
+    )
+    
+    return (historical_line + forecast_line + rules + now_line).properties(
         width='container',
-        height=300,
+        height=400,
         title=alt.TitleParams(
-            text='Kayakability Score Trend',
+            text='Kayakability Score: Historical Data & 10-Day Forecast',
             fontSize=16,
             fontWeight='bold'
         )
@@ -473,196 +508,227 @@ def create_modern_trend_chart(df, days=30):
         color='independent'
     )
 
-def create_discharge_area_chart(df, days=30):
-    """Create modern area chart for discharge"""
-    recent_data = df.tail(days).reset_index(drop=True)
+def create_discharge_forecast_chart(historical_df, forecast_df):
+    """Create discharge forecast chart"""
+    historical_df = historical_df.copy()
+    forecast_df = forecast_df.copy()
+    historical_df['data_type'] = 'Historical'
+    forecast_df['data_type'] = 'Forecast'
     
-    if 'site_id' in df.columns and len(df['site_id'].unique()) > 1:
-        chart = alt.Chart(recent_data).mark_line(
-            strokeWidth=2
-        ).encode(
-            x=alt.X('timestamp:T', title='Date'),
-            y=alt.Y('discharge_cfs:Q', title='Discharge (CFS)'),
-            color=alt.Color('site_id:N', title='Site ID'),
-            tooltip=['timestamp:T', 'discharge_cfs:Q', 'site_name:N']
-        )
-    else:
-        chart = alt.Chart(recent_data).mark_area(
-            line={'stroke': '#06b6d4', 'strokeWidth': 3},
-            color=alt.Gradient(
-                gradient='linear',
-                stops=[
-                    alt.GradientStop(color='#06b6d4', offset=0.3),
-                    alt.GradientStop(color='#67e8f9', offset=0.7),
-                    alt.GradientStop(color='#cffafe', offset=1)
-                ],
-                x1=1, x2=1, y1=1, y2=0
-            ),
-            opacity=0.8
-        ).encode(
-            x=alt.X('timestamp:T', title='Date'),
-            y=alt.Y('discharge_cfs:Q', title='Discharge (CFS)'),
-            tooltip=['timestamp:T', 'discharge_cfs:Q', 'gage_height_ft:Q']
-        )
+    combined_df = pd.concat([historical_df, forecast_df], ignore_index=True)
     
-    return chart.properties(
+    base_chart = alt.Chart(combined_df).add_selection(
+        alt.selection_interval(bind='scales')
+    )
+    
+    historical_area = base_chart.transform_filter(
+        alt.datum.data_type == 'Historical'
+    ).mark_area(
+        opacity=0.7,
+        color='#06b6d4'
+    ).encode(
+        x=alt.X('timestamp:T', title='Date & Time'),
+        y=alt.Y('discharge_cfs:Q', title='Discharge (CFS)'),
+        tooltip=['timestamp:T', 'discharge_cfs:Q', 'site_name:N']
+    )
+    
+    forecast_area = base_chart.transform_filter(
+        alt.datum.data_type == 'Forecast'
+    ).mark_area(
+        opacity=0.5,
+        color='#f59e0b'
+    ).encode(
+        x=alt.X('timestamp:T', title='Date & Time'),
+        y=alt.Y('discharge_cfs:Q', title='Discharge (CFS)'),
+        tooltip=['timestamp:T', 'discharge_cfs:Q', 'site_name:N']
+    )
+    
+    now_line = alt.Chart(pd.DataFrame({
+        'now': [datetime.datetime.now()]
+    })).mark_rule(
+        strokeWidth=2,
+        stroke='red',
+        opacity=0.7
+    ).encode(
+        x='now:T'
+    )
+    
+    return (historical_area + forecast_area + now_line).properties(
         width='container',
-        height=250,
+        height=300,
         title=alt.TitleParams(
-            text='Water Discharge Trend',
+            text='Water Discharge: Historical & Forecast',
             fontSize=16,
             fontWeight='bold'
         )
     )
 
-def format_weather_display(row):
-    """Format weather information for display"""
-    if pd.isna(row.get('weather_description')):
-        return "Weather data not available"
+def format_window_display(window):
+    """Format optimal window for display"""
+    start_time = window['start_time']
+    end_time = window['end_time']
     
-    temp = f"{row.get('temperature_f', 0):.0f}°F" if pd.notna(row.get('temperature_f')) else 'N/A'
-    humidity = f"{row.get('humidity_percent', 0):.0f}%" if pd.notna(row.get('humidity_percent')) else 'N/A'
-    wind = f"{row.get('wind_speed_mph', 0):.0f} mph" if pd.notna(row.get('wind_speed_mph')) else 'N/A'
+    # Format time display
+    if start_time.date() == end_time.date():
+        time_str = f"{start_time.strftime('%a %m/%d')} {start_time.strftime('%I:%M %p')} - {end_time.strftime('%I:%M %p')}"
+    else:
+        time_str = f"{start_time.strftime('%a %m/%d %I:%M %p')} - {end_time.strftime('%a %m/%d %I:%M %p')}"
     
-    return {
-        'description': row.get('weather_description', 'N/A'),
-        'temperature': temp,
-        'humidity': humidity,
-        'wind': wind
-    }
+    return time_str
 
-# Load data
-df, weather_df, files_info = load_data()
-
-# Apply enhanced scoring if not already present
-if 'kayakability_score' not in df.columns or df['kayakability_score'].isna().all():
-    df['kayakability_score'] = df.apply(calculate_enhanced_kayakability_score, axis=1)
+# Load the data
+data, files_status = load_forecast_data()
 
 # Header
-st.markdown("<h1 class='main-header'>🛶 Kayakability Dashboard</h1>", unsafe_allow_html=True)
-st.markdown("<p class='subtitle'>Real-time water conditions and safety assessment for the Merrimack River</p>", unsafe_allow_html=True)
+st.markdown("<h1 class='main-header'>🛶 Kayakability Forecast Dashboard</h1>", unsafe_allow_html=True)
+st.markdown("<p class='subtitle'>Hourly conditions and 10-day forecasting for optimal kayaking windows</p>", unsafe_allow_html=True)
 
-# Data source indicator (more subtle)
-if files_info.get('sample'):
-    st.info("📊 Currently displaying sample data for demonstration")
-elif files_info.get('combined'):
-    st.success("✅ Connected to live data feed")
-
-# Determine best conditions
-if 'site_id' in df.columns and len(df['site_id'].unique()) > 1:
-    latest_by_site = df.groupby('site_id').last().reset_index()
-    best_site = latest_by_site.loc[latest_by_site['kayakability_score'].idxmax()]
-    latest = best_site
-    is_multi_site = True
+# Data status
+if files_status.get('sample'):
+    st.info("📊 Currently displaying sample forecast data for demonstration")
 else:
-    latest = df.iloc[-1]
-    is_multi_site = False
-
-# Main layout
-col1, col2 = st.columns([2, 1], gap="large")
-
-with col1:
-    st.markdown("### 🗺️ Monitoring Locations")
-    map_chart = create_enhanced_map(df)
-    st.pydeck_chart(map_chart, use_container_width=True)
-
-with col2:
-    # Enhanced current conditions card
-    icon, status, css_class, color, status_class = get_enhanced_score_info(latest.get('kayakability_score'))
-    score_description = get_score_description(latest.get('kayakability_score'))
+    status_messages = []
+    if files_status.get('historical'):
+        status_messages.append("✅ Historical data loaded")
+    if files_status.get('forecast'):
+        status_messages.append("✅ Forecast data loaded")
+    if files_status.get('windows'):
+        status_messages.append("✅ Optimal windows identified")
     
-    site_name = latest.get('site_name', 'Unknown Site')
-    display_name = site_name.split(' at ')[-1] if ' at ' in str(site_name) else site_name
+    if status_messages:
+        st.success(" | ".join(status_messages))
+
+# Main content
+if 'historical' in data and 'forecast' in data:
+    historical_df = data['historical']
+    forecast_df = data['forecast']
     
-    if pd.notna(latest.get('timestamp')):
-        timestamp_text = latest['timestamp'].strftime('%m/%d %I:%M %p')
-    else:
-        timestamp_text = 'N/A'
+    # Current conditions
+    latest = historical_df.iloc[-1]
+    icon, status, css_class, color, status_class = get_score_info(latest['kayakability_score'])
     
-    # Create the HTML content
-    conditions_html = f"""
-    <div class="condition-card">
-        <h3 style="margin: 0 0 1rem 0; color: #1e293b; font-weight: 600;">
-            {'🏆 Best Conditions' if is_multi_site else '📍 Current Conditions'}
-        </h3>
-        
-        <div class="score-display">
-            <div class="score-icon">{icon}</div>
-            <div class="score-number" style="color: {color};">{latest.get('kayakability_score', 0):.0f}</div>
-            <div class="score-status {css_class}">{status}</div>
-        </div>
-        
-        <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
-            <p style="margin: 0; font-size: 0.9rem; color: #475569; line-height: 1.4;">
-                {score_description}
-            </p>
-        </div>
-        
-        <div style="font-size: 0.9rem; color: #64748b;">
+    st.markdown("### 📍 Current Conditions")
+    
+    col1, col2, col3 = st.columns([2, 1, 1])
+    
+    with col1:
+        st.markdown(f"""
+        <div class="forecast-card">
+            <div class="score-display">
+                <div class="score-icon">{icon}</div>
+                <div class="score-number" style="color: {color};">{latest['kayakability_score']:.0f}</div>
+                <div class="score-status {css_class}">{status}</div>
+            </div>
             <div class="metric-row">
                 <span class="metric-label">Location</span>
-                <span class="metric-value">{display_name}</span>
-            </div>
-            <div class="metric-row">
-                <span class="metric-label">Discharge</span>
-                <span class="metric-value">{latest.get('discharge_cfs', 0):.0f} CFS</span>
-            </div>
-            <div class="metric-row">
-                <span class="metric-label">Gage Height</span>  
-                <span class="metric-value">{latest.get('gage_height_ft', 0):.1f} ft</span>
+                <span class="metric-value">{latest['site_name'].split(' at ')[-1]}</span>
             </div>
             <div class="metric-row">
                 <span class="metric-label">Last Updated</span>
-                <span class="metric-value">{timestamp_text}</span>
+                <span class="metric-value">{latest['timestamp'].strftime('%m/%d %I:%M %p')}</span>
             </div>
         </div>
-    </div>
-    """
+        """, unsafe_allow_html=True)
     
-    # Display the HTML
-    st.markdown(conditions_html, unsafe_allow_html=True)
-
-# Weather section
-if 'weather_description' in df.columns and pd.notna(latest.get('weather_description')):
-    st.markdown("### 🌤️ Weather Conditions")
-    weather = format_weather_display(latest)
-    
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        st.metric("Conditions", weather['description'])
     with col2:
-        st.metric("Temperature", weather['temperature'])
+        st.metric("Discharge", f"{latest['discharge_cfs']:.0f} CFS")
+        st.metric("Gage Height", f"{latest['gage_height_ft']:.1f} ft")
+    
     with col3:
-        st.metric("Wind Speed", weather['wind'])
-    with col4:
-        st.metric("Humidity", weather['humidity'])
+        # Next 24 hours summary
+        next_24h = forecast_df[forecast_df['timestamp'] <= datetime.datetime.now() + datetime.timedelta(hours=24)]
+        if len(next_24h) > 0:
+            avg_score = next_24h['kayakability_score'].mean()
+            max_score = next_24h['kayakability_score'].max()
+            
+            st.metric("24h Avg Score", f"{avg_score:.0f}")
+            st.metric("24h Peak Score", f"{max_score:.0f}")
 
-# Charts section
-st.markdown("---")
-st.markdown("### 📈 Historical Trends")
+    # Optimal windows section
+    if 'windows' in data and len(data['windows']) > 0:
+        st.markdown("### 🎯 Optimal Kayaking Windows (Next 10 Days)")
+        
+        windows_df = data['windows'].head(10)  # Show top 10 windows
+        
+        col1, col2 = st.columns([2, 1])
+        
+        with col1:
+            st.markdown("#### 📅 Recommended Times")
+            
+            for _, window in windows_df.iterrows():
+                icon, status, css_class, color, status_class = get_score_info(window['avg_score'])
+                time_str = format_window_display(window)
+                
+                st.markdown(f"""
+                <div class="window-card {status_class}">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong>{icon} {time_str}</strong><br>
+                            <small style="color: #6b7280;">{window['site_name'].split(' at ')[-1]} • {window['duration_hours']:.1f} hours</small>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 1.5rem; font-weight: bold; color: {color};">{window['avg_score']:.0f}</div>
+                            <div style="font-size: 0.8rem; color: #6b7280;">Score</div>
+                        </div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+        
+        with col2:
+            st.markdown("#### 📊 Window Summary")
+            
+            total_windows = len(windows_df)
+            excellent_windows = len(windows_df[windows_df['avg_score'] >= 85])
+            good_windows = len(windows_df[windows_df['avg_score'] >= 70])
+            
+            st.metric("Total Windows", total_windows)
+            st.metric("Excellent (85+)", excellent_windows)
+            st.metric("Good (70+)", good_windows)
+            
+            if len(windows_df) > 0:
+                best_window = windows_df.iloc[0]
+                st.markdown(f"""
+                <div class="alert success">
+                    <strong>🏆 Best Opportunity:</strong><br>
+                    {format_window_display(best_window)}<br>
+                    Score: {best_window['avg_score']:.0f}/100
+                </div>
+                """, unsafe_allow_html=True)
+    
+    else:
+        st.markdown("### ⚠️ No Optimal Windows Found")
+        st.markdown("No kayaking windows with scores ≥70 were identified in the next 10 days. Check back later for updated forecasts.")
 
-col1, col2 = st.columns(2, gap="large")
+    # Charts section
+    st.markdown("---")
+    st.markdown("### 📈 Detailed Forecasts")
+    
+    col1, col2 = st.columns(2, gap="large")
+    
+    with col1:
+        st.markdown('<div class="chart-container">', unsafe_allow_html=True)
+        timeline_chart = create_forecast_timeline_chart(historical_df, forecast_df)
+        st.altair_chart(timeline_chart, use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    with col2:
+        st.markdown('<div class="chart-container">', unsafe_allow_html=True)
+        discharge_chart = create_discharge_forecast_chart(historical_df, forecast_df)
+        st.altair_chart(discharge_chart, use_container_width=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
-with col1:
-    st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-    trend_chart = create_modern_trend_chart(df)
-    st.altair_chart(trend_chart, use_container_width=True)
-    st.markdown('</div>', unsafe_allow_html=True)
+else:
+    st.error("Could not load forecast data. Please ensure the forecasting system has been run.")
 
-with col2:
-    st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-    discharge_chart = create_discharge_area_chart(df)
-    st.altair_chart(discharge_chart, use_container_width=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# Footer info
+# Footer
 st.markdown("---")
 st.markdown("""
-<div class="info-section">
-    <h4 style="margin: 0 0 1rem 0; color: #1e293b;">📋 Scoring Methodology</h4>
+<div style="background: #f8fafc; padding: 1.5rem; border-radius: 12px; border-left: 4px solid #3b82f6;">
+    <h4 style="margin: 0 0 1rem 0; color: #1e293b;">🔮 About the Forecasting System</h4>
     <p style="margin: 0; color: #475569; line-height: 1.5;">
-        Our enhanced kayakability score considers discharge flow (40%), water level (30%), wind conditions (20%), 
-        and temperature (10%) to provide a comprehensive safety assessment from 0-100.
+        This dashboard uses machine learning to predict optimal kayaking conditions up to 10 days in advance. 
+        The system analyzes hourly USGS data patterns to identify 3+ hour windows with kayakability scores ≥70. 
+        Forecasts are updated automatically and consider discharge flow, water levels, and seasonal patterns.
     </p>
 </div>
 """, unsafe_allow_html=True)
