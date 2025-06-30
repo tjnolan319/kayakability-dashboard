@@ -1,13 +1,87 @@
 import os
 import time
+import requests
 import pandas as pd
 from site_config import merrimack_sites
 from time_series_analysis import (
-    fetch_hourly_usgs_data,
     calculate_kayakability_score,
     forecast_conditions,
     find_optimal_windows,
 )
+
+def fetch_hourly_usgs_data(site_id, days_back=7):
+    """
+    Fetch hourly USGS data for the given site ID and number of days back.
+    Returns a DataFrame with columns: datetime, discharge_cfs, gage_height_ft
+    """
+    # Calculate start time in epoch (seconds)
+    end_time = pd.Timestamp.utcnow()
+    start_time = end_time - pd.Timedelta(days=days_back)
+
+    url = (
+        f"https://waterservices.usgs.gov/nwis/iv/"
+        f"?format=json&sites={site_id}"
+        f"&parameterCd=00060,00065"
+        f"&startDT={start_time.strftime('%Y-%m-%dT%H:%M:%S')}"
+        f"&endDT={end_time.strftime('%Y-%m-%dT%H:%M:%S')}"
+        f"&siteStatus=all"
+    )
+
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()
+    except Exception as e:
+        print(f"Error fetching data for site {site_id}: {e}")
+        return pd.DataFrame()
+
+    try:
+        # Parse JSON into DataFrame
+        time_series = data['value']['timeSeries']
+        # Create empty lists to hold parsed data
+        records = []
+
+        # Extract discharge (00060) and gage height (00065) series
+        discharge_series = None
+        gage_series = None
+        for series in time_series:
+            param_code = series['variable']['variableCode'][0]['value']
+            if param_code == '00060':  # discharge
+                discharge_series = series
+            elif param_code == '00065':  # gage height
+                gage_series = series
+
+        if discharge_series is None or gage_series is None:
+            print(f"Missing discharge or gage height data for site {site_id}")
+            return pd.DataFrame()
+
+        # Create dicts of datetime to value for each parameter
+        discharge_data = {
+            point['dateTime']: float(point['value'])
+            for point in discharge_series['values'][0]['value']
+            if point['value'] is not None
+        }
+        gage_data = {
+            point['dateTime']: float(point['value'])
+            for point in gage_series['values'][0]['value']
+            if point['value'] is not None
+        }
+
+        # Combine by datetime (intersection)
+        common_times = set(discharge_data.keys()) & set(gage_data.keys())
+        for dt in sorted(common_times):
+            records.append({
+                'datetime': pd.to_datetime(dt),
+                'discharge_cfs': discharge_data[dt],
+                'gage_height_ft': gage_data[dt]
+            })
+
+        df = pd.DataFrame(records)
+        return df
+
+    except Exception as e:
+        print(f"Error parsing data for site {site_id}: {e}")
+        return pd.DataFrame()
 
 def save_forecast_data(historical_df, forecast_df, optimal_windows, output_folder='kayak_forecast_data'):
     os.makedirs(output_folder, exist_ok=True)
@@ -110,9 +184,15 @@ def main():
 
         all_historical_data.append(historical_df)
 
-        # Generate forecast
+        # Save historical data to CSV for this site (so time_series_analysis can read it)
+        site_folder = "kayak_forecast_data"
+        os.makedirs(site_folder, exist_ok=True)
+        csv_path = os.path.join(site_folder, f"{site_id}_historical.csv")
+        historical_df.to_csv(csv_path, index=False)
+
+        # Generate forecast (pass CSV path now)
         print("  🔮 Generating 10-day forecast...")
-        forecast_df = forecast_conditions(site_id, site_info, historical_df)
+        forecast_df = forecast_conditions(site_id, site_info, csv_path)
 
         if not forecast_df.empty:
             all_forecast_data.append(forecast_df)
@@ -131,7 +211,7 @@ def main():
     combined_historical = pd.concat(all_historical_data, ignore_index=True) if all_historical_data else pd.DataFrame()
     combined_forecast = pd.concat(all_forecast_data, ignore_index=True) if all_forecast_data else pd.DataFrame()
 
-    # Save files
+    # Save combined files
     output_folder = save_forecast_data(combined_historical, combined_forecast, all_optimal_windows)
 
     # Output recommendations
