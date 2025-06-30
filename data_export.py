@@ -2,12 +2,58 @@ import os
 import time
 import requests
 import pandas as pd
+from datetime import datetime, timedelta
 from site_config import merrimack_sites
 from time_series_analysis import (
     calculate_kayakability_score,
     forecast_conditions,
     find_optimal_windows,
 )
+
+def ensure_data_folders():
+    """Create necessary data folders if they don't exist"""
+    folders = [
+        'kayak_forecast_data',
+        'kayak_forecast_data/river_data',
+        'kayak_forecast_data/weather_data', 
+        'kayak_forecast_data/combined_data'
+    ]
+    
+    for folder in folders:
+        os.makedirs(folder, exist_ok=True)
+        print(f"📁 Ensured folder exists: {folder}")
+    
+    return folders
+
+def initialize_csv_files():
+    """Initialize CSV files with headers if they don't exist"""
+    csv_files = {
+        'kayak_forecast_data/river_data/historical_hourly_data.csv': [
+            'datetime', 'discharge_cfs', 'gage_height_ft', 
+            'site_id', 'site_name', 'kayakability_score'
+        ],
+        'kayak_forecast_data/weather_data/weather_data.csv': [
+            'datetime', 'site_id', 'site_name', 'temperature_f', 
+            'humidity_percent', 'wind_speed_mph', 'precipitation_in',
+            'weather_condition'
+        ],
+        'kayak_forecast_data/combined_data/forecast_data.csv': [
+            'site_id', 'site_name', 'datetime', 'discharge_cfs',
+            'gage_height_ft', 'kayakability_score', 'forecast_type'
+        ],
+        'kayak_forecast_data/combined_data/optimal_windows.csv': [
+            'site_id', 'site_name', 'start_time', 'end_time',
+            'duration_hours', 'avg_score', 'max_score',
+            'avg_discharge', 'avg_gage'
+        ]
+    }
+    
+    for file_path, columns in csv_files.items():
+        if not os.path.exists(file_path):
+            pd.DataFrame(columns=columns).to_csv(file_path, index=False)
+            print(f"📋 Initialized CSV: {file_path}")
+        else:
+            print(f"📋 CSV exists: {file_path}")
 
 def fetch_hourly_usgs_data(site_id, days_back=7):
     """
@@ -83,41 +129,98 @@ def fetch_hourly_usgs_data(site_id, days_back=7):
         print(f"Error parsing data for site {site_id}: {e}")
         return pd.DataFrame()
 
-def save_forecast_data(historical_df, forecast_df, optimal_windows, output_folder='kayak_forecast_data'):
-    os.makedirs(output_folder, exist_ok=True)
+def fetch_weather_data(site_id, site_info):
+    """
+    Fetch weather data for the site location
+    This is a placeholder - you'll need to integrate with a weather API
+    """
+    # Placeholder weather data - replace with actual weather API call
+    current_time = pd.Timestamp.utcnow()
+    weather_data = {
+        'datetime': current_time,
+        'site_id': site_id,
+        'site_name': site_info['name'],
+        'temperature_f': 70.0,  # Replace with actual API call
+        'humidity_percent': 50.0,
+        'wind_speed_mph': 5.0,
+        'precipitation_in': 0.0,
+        'weather_condition': 'Clear'
+    }
+    
+    return pd.DataFrame([weather_data])
 
-    # Save historical data
-    historical_file = os.path.join(output_folder, 'historical_hourly_data.csv')
+def append_to_csv(df, file_path, dedup_columns=None):
+    """
+    Append new data to existing CSV, with optional deduplication
+    """
+    if df.empty:
+        return
+    
+    # Read existing data
+    if os.path.exists(file_path):
+        existing_df = pd.read_csv(file_path)
+        if 'datetime' in existing_df.columns:
+            existing_df['datetime'] = pd.to_datetime(existing_df['datetime'])
+    else:
+        existing_df = pd.DataFrame()
+    
+    # Ensure datetime column is datetime type in new data
+    if 'datetime' in df.columns:
+        df['datetime'] = pd.to_datetime(df['datetime'])
+    
+    # Combine data
+    if not existing_df.empty:
+        combined_df = pd.concat([existing_df, df], ignore_index=True)
+        
+        # Remove duplicates if dedup columns specified
+        if dedup_columns:
+            combined_df = combined_df.drop_duplicates(subset=dedup_columns, keep='last')
+    else:
+        combined_df = df
+    
+    # Sort by datetime if present
+    if 'datetime' in combined_df.columns:
+        combined_df = combined_df.sort_values('datetime')
+    
+    # Save back to CSV
+    combined_df.to_csv(file_path, index=False)
+    print(f"📝 Appended {len(df)} rows to {file_path} (total: {len(combined_df)} rows)")
+
+def save_forecast_data(historical_df, forecast_df, optimal_windows, weather_df=None):
+    """
+    Save data to appropriate CSV files with appending logic
+    """
+    # River data
     if not historical_df.empty:
-        historical_df.to_csv(historical_file, index=False)
-    else:
-        pd.DataFrame(columns=[
-            'datetime', 'discharge_cfs', 'gage_height_ft',
-            'site_id', 'site_name', 'kayakability_score'
-        ]).to_csv(historical_file, index=False)
-
-    # Save forecast data
-    forecast_file = os.path.join(output_folder, 'forecast_data.csv')
+        append_to_csv(
+            historical_df,
+            'kayak_forecast_data/river_data/historical_hourly_data.csv',
+            dedup_columns=['datetime', 'site_id']
+        )
+    
+    # Weather data
+    if weather_df is not None and not weather_df.empty:
+        append_to_csv(
+            weather_df,
+            'kayak_forecast_data/weather_data/weather_data.csv',
+            dedup_columns=['datetime', 'site_id']
+        )
+    
+    # Combined forecast data
     if not forecast_df.empty:
-        forecast_df.to_csv(forecast_file, index=False)
-    else:
-        pd.DataFrame(columns=[
-            'site_id', 'site_name', 'datetime', 'discharge_cfs',
-            'gage_height_ft', 'kayakability_score', 'forecast_type'
-        ]).to_csv(forecast_file, index=False)
-
-    # Save optimal windows
-    windows_file = os.path.join(output_folder, 'optimal_windows.csv')
+        append_to_csv(
+            forecast_df,
+            'kayak_forecast_data/combined_data/forecast_data.csv',
+            dedup_columns=['datetime', 'site_id', 'forecast_type']
+        )
+    
+    # Optimal windows (replace rather than append since these are forecasts)
+    windows_file = 'kayak_forecast_data/combined_data/optimal_windows.csv'
     if optimal_windows:
         pd.DataFrame(optimal_windows).to_csv(windows_file, index=False)
-    else:
-        pd.DataFrame(columns=[
-            'site_id', 'site_name', 'start_time', 'end_time',
-            'duration_hours', 'avg_score', 'max_score',
-            'avg_discharge', 'avg_gage'
-        ]).to_csv(windows_file, index=False)
-
-    return output_folder
+        print(f"💾 Saved {len(optimal_windows)} optimal windows to {windows_file}")
+    
+    return 'kayak_forecast_data'
 
 def generate_recommendations(optimal_windows):
     """Generate human-readable recommendations"""
@@ -153,13 +256,49 @@ def generate_recommendations(optimal_windows):
 
     return "\n".join(recommendations)
 
+def cleanup_old_data(days_to_keep=30):
+    """
+    Remove data older than specified days to prevent CSV files from growing too large
+    """
+    cutoff_date = pd.Timestamp.utcnow() - pd.Timedelta(days=days_to_keep)
+    
+    csv_files = [
+        'kayak_forecast_data/river_data/historical_hourly_data.csv',
+        'kayak_forecast_data/weather_data/weather_data.csv',
+        'kayak_forecast_data/combined_data/forecast_data.csv'
+    ]
+    
+    for file_path in csv_files:
+        if os.path.exists(file_path):
+            df = pd.read_csv(file_path)
+            if 'datetime' in df.columns and not df.empty:
+                df['datetime'] = pd.to_datetime(df['datetime'])
+                original_count = len(df)
+                df = df[df['datetime'] >= cutoff_date]
+                
+                if len(df) < original_count:
+                    df.to_csv(file_path, index=False)
+                    print(f"🧹 Cleaned {file_path}: removed {original_count - len(df)} old records")
+
 def main():
     print("🚀 Starting Enhanced Kayak Forecasting System...")
+    print(f"⏰ Run time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+    
+    # Ensure folder structure exists
+    ensure_data_folders()
+    
+    # Initialize CSV files
+    initialize_csv_files()
+    
+    # Clean up old data
+    cleanup_old_data(days_to_keep=30)
+    
     print("📊 Collecting hourly data and generating 10-day forecast...")
 
     all_historical_data = []
     all_forecast_data = []
     all_optimal_windows = []
+    all_weather_data = []
 
     for site_id, site_info in merrimack_sites.items():
         print(f"\n🔍 Processing site: {site_info['name']}")
@@ -184,9 +323,14 @@ def main():
 
         all_historical_data.append(historical_df)
 
+        # Fetch weather data
+        print("  🌤️  Fetching weather data...")
+        weather_df = fetch_weather_data(site_id, site_info)
+        if not weather_df.empty:
+            all_weather_data.append(weather_df)
+
         # Save historical data to CSV for this site (so time_series_analysis can read it)
         site_folder = "kayak_forecast_data"
-        os.makedirs(site_folder, exist_ok=True)
         csv_path = os.path.join(site_folder, f"{site_id}_historical.csv")
         historical_df.to_csv(csv_path, index=False)
 
@@ -210,9 +354,10 @@ def main():
     # Combine all data
     combined_historical = pd.concat(all_historical_data, ignore_index=True) if all_historical_data else pd.DataFrame()
     combined_forecast = pd.concat(all_forecast_data, ignore_index=True) if all_forecast_data else pd.DataFrame()
+    combined_weather = pd.concat(all_weather_data, ignore_index=True) if all_weather_data else pd.DataFrame()
 
-    # Save combined files
-    output_folder = save_forecast_data(combined_historical, combined_forecast, all_optimal_windows)
+    # Save combined files with appending logic
+    output_folder = save_forecast_data(combined_historical, combined_forecast, all_optimal_windows, combined_weather)
 
     # Output recommendations
     print("\n" + "="*60)
@@ -226,6 +371,7 @@ def main():
     return {
         'historical_data': combined_historical,
         'forecast_data': combined_forecast,
+        'weather_data': combined_weather,
         'optimal_windows': all_optimal_windows,
         'output_folder': output_folder
     }
