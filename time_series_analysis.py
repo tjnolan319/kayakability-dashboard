@@ -1,10 +1,9 @@
-# time_series_analysis.py
-
 import numpy as np
 import pandas as pd
 from datetime import timedelta
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import StandardScaler
+
 
 def create_time_features(df):
     df = df.copy()
@@ -22,6 +21,7 @@ def create_time_features(df):
     df['discharge_ma6'] = df['discharge_cfs'].rolling(window=6, center=True).mean()
     df['gage_ma6'] = df['gage_height_ft'].rolling(window=6, center=True).mean()
     return df
+
 
 def train_forecast_model(df, target_col='discharge_cfs'):
     if len(df) < 24:
@@ -44,19 +44,21 @@ def train_forecast_model(df, target_col='discharge_cfs'):
     model.fit(X_scaled, y)
     return model, scaler
 
-def forecast_conditions(site_id, site_info, historical_df, forecast_hours=240):
-    from data_export import calculate_kayakability_score  # Prevent circular import
-    if historical_df.empty:
+
+def forecast_conditions(site_id, site_info, csv_path, forecast_hours=240):
+    from data_export import calculate_kayakability_score
+    df = pd.read_csv(csv_path, parse_dates=['datetime'])
+    if df.empty:
         return pd.DataFrame()
-    discharge_model, discharge_scaler = train_forecast_model(historical_df, 'discharge_cfs')
-    gage_model, gage_scaler = train_forecast_model(historical_df, 'gage_height_ft')
+    discharge_model, discharge_scaler = train_forecast_model(df, 'discharge_cfs')
+    gage_model, gage_scaler = train_forecast_model(df, 'gage_height_ft')
     if discharge_model is None or gage_model is None:
         return pd.DataFrame()
-    last_time = historical_df['datetime'].max()
+    last_time = df['datetime'].max()
     future_times = [last_time + timedelta(hours=i) for i in range(1, forecast_hours + 1)]
     forecast_data = []
-    latest_discharge = historical_df['discharge_cfs'].iloc[-1]
-    latest_gage = historical_df['gage_height_ft'].iloc[-1]
+    latest_discharge = df['discharge_cfs'].iloc[-1]
+    latest_gage = df['gage_height_ft'].iloc[-1]
     for future_time in future_times:
         hour = future_time.hour
         day_of_week = future_time.dayofweek
@@ -87,3 +89,10 @@ def forecast_conditions(site_id, site_info, historical_df, forecast_hours=240):
         latest_discharge = discharge_pred
         latest_gage = gage_pred
     return pd.DataFrame(forecast_data)
+
+
+__all__ = [
+    "create_time_features",
+    "train_forecast_model",
+    "forecast_conditions"
+]
