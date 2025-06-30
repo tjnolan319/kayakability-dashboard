@@ -15,6 +15,42 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
+# Add nighttime filter checkbox
+hide_nighttime = st.sidebar.checkbox("🌜 Hide Nighttime Hours", value=False)
+
+# Load the data
+data, files_status = load_forecast_data()
+
+# Filter forecast data for daytime hours (7 AM to 7 PM)
+if hide_nighttime and 'forecast' in data:
+    forecast_df = data['forecast']
+    data['forecast'] = forecast_df[forecast_df['timestamp'].dt.hour.between(7, 19)]
+
+# Add interactive map of forecast sites
+if 'forecast' in data:
+    st.markdown("### 🗺️ Site Map")
+    map_df = data['forecast'][['lat', 'lon', 'site_name']].drop_duplicates()
+    st.pydeck_chart(pdk.Deck(
+        map_style="mapbox://styles/mapbox/light-v9",
+        initial_view_state=pdk.ViewState(
+            latitude=map_df['lat'].mean(),
+            longitude=map_df['lon'].mean(),
+            zoom=9,
+            pitch=45,
+        ),
+        layers=[
+            pdk.Layer(
+                "ScatterplotLayer",
+                data=map_df,
+                get_position='[lon, lat]',
+                get_color='[0, 123, 255, 160]',
+                get_radius=500,
+            ),
+        ],
+        tooltip={"text": "{site_name}"}
+    ))
+
+
 # Enhanced CSS for modern forecasting design
 st.markdown("""
 <style>
