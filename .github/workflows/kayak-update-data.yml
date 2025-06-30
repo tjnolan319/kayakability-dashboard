@@ -1,8 +1,8 @@
-name: Daily Kayak Data Update
+name: Hourly Kayak Data Update
 
 on:
   schedule:
-    - cron: '0 9 * * *'  # Runs every day at 9:00 AM UTC
+    - cron: '0 * * * *'  # Runs at the top of every hour UTC
   workflow_dispatch:  # Allows manual trigger
 
 jobs:
