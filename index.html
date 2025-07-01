@@ -1,0 +1,1066 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🛶 Kayakability Forecast Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <style>
+        /* Import Google Fonts */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        /* Global styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        /* Main header */
+        .main-header {
+            text-align: center;
+            background: linear-gradient(135deg, #0f172a, #1e293b, #334155);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.02em;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #64748b;
+            font-size: 1.1rem;
+            font-weight: 400;
+            margin-bottom: 2rem;
+            opacity: 0.8;
+        }
+        
+        /* Card components */
+        .forecast-card {
+            background: linear-gradient(135deg, #ffffff, #f8fafc);
+            padding: 2rem;
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            height: 100%;
+            transition: all 0.3s ease;
+            margin-bottom: 1rem;
+        }
+        
+        .forecast-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        
+        .window-card {
+            background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid #10b981;
+            margin: 0.5rem 0;
+            transition: all 0.2s ease;
+        }
+        
+        .window-card:hover {
+            background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+            transform: translateY(-1px);
+        }
+        
+        .window-card.excellent {
+            background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+            border-color: #059669;
+        }
+        
+        .window-card.good {
+            background: linear-gradient(135deg, #f0f9ff, #dbeafe);
+            border-color: #3b82f6;
+        }
+        
+        .window-card.fair {
+            background: linear-gradient(135deg, #fefce8, #fef3c7);
+            border-color: #f59e0b;
+        }
+        
+        /* Score styling */
+        .score-display {
+            text-align: center;
+            margin: 1.5rem 0;
+        }
+        
+        .score-number {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin: 0.5rem 0;
+            line-height: 1;
+        }
+        
+        .score-icon {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .score-status {
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin: 0.5rem 0;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        /* Status colors */
+        .status-excellent { color: #059669; }
+        .status-good { color: #16a34a; }
+        .status-fair { color: #ca8a04; }
+        .status-poor { color: #dc2626; }
+        .status-dangerous { color: #991b1b; }
+        
+        /* Metric styling */
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        
+        .metric-row:last-child {
+            border-bottom: none;
+        }
+        
+        .metric-label {
+            font-weight: 500;
+            color: #475569;
+        }
+        
+        .metric-value {
+            font-weight: 600;
+            color: #1e293b;
+        }
+        
+        /* Alert styling */
+        .alert {
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            font-weight: 500;
+        }
+        
+        .alert.success {
+            background: #ecfdf5;
+            color: #065f46;
+            border: 1px solid #10b981;
+        }
+        
+        .alert.warning {
+            background: #fefce8;
+            color: #92400e;
+            border: 1px solid #f59e0b;
+        }
+        
+        .alert.info {
+            background: #eff6ff;
+            color: #1e40af;
+            border: 1px solid #3b82f6;
+        }
+        
+        /* Chart containers */
+        .chart-container {
+            background: #ffffff;
+            padding: 1.5rem;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            margin: 1rem 0;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Grid layout */
+        .grid {
+            display: grid;
+            gap: 1.5rem;
+        }
+        
+        .grid-2 {
+            grid-template-columns: 1fr 1fr;
+        }
+        
+        .grid-3 {
+            grid-template-columns: 2fr 1fr 1fr;
+        }
+        
+        .grid-equal-3 {
+            grid-template-columns: 1fr 1fr 1fr;
+        }
+        
+        /* Controls */
+        .controls {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 2rem;
+        }
+        
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .checkbox-container input[type="checkbox"] {
+            transform: scale(1.2);
+        }
+        
+        /* Loading spinner */
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            font-size: 1.2rem;
+            color: #64748b;
+        }
+        
+        /* Status indicator */
+        .status-indicator {
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+        
+        .status-indicator.sample {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #3b82f6;
+        }
+        
+        .status-indicator.success {
+            background: #ecfdf5;
+            color: #065f46;
+            border: 1px solid #10b981;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .main-header {
+                font-size: 2rem;
+            }
+            .score-number {
+                font-size: 2.5rem;
+            }
+            .grid-2, .grid-3, .grid-equal-3 {
+                grid-template-columns: 1fr;
+            }
+            .container {
+                padding: 1rem;
+            }
+        }
+        
+        /* Chart specific styles */
+        .axis {
+            font-size: 12px;
+        }
+        
+        .axis path,
+        .axis line {
+            fill: none;
+            stroke: #64748b;
+            shape-rendering: crispEdges;
+        }
+        
+        .line {
+            fill: none;
+            stroke-width: 3;
+        }
+        
+        .line.historical {
+            stroke: #3b82f6;
+        }
+        
+        .line.forecast {
+            stroke: #f59e0b;
+            stroke-dasharray: 5,5;
+        }
+        
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <h1 class="main-header">🛶 Kayakability Forecast Dashboard</h1>
+        <p class="subtitle">Hourly conditions and 10-day forecasting for optimal kayaking windows</p>
+        
+        <!-- Status indicator -->
+        <div id="status-indicator"></div>
+        
+        <!-- Controls -->
+        <div class="controls">
+            <div class="checkbox-container">
+                <input type="checkbox" id="hide-nighttime">
+                <label for="hide-nighttime">🌜 Hide Nighttime Hours</label>
+            </div>
+        </div>
+        
+        <!-- Loading indicator -->
+        <div id="loading" class="loading">
+            📊 Loading forecast data...
+        </div>
+        
+        <!-- Main content (hidden until data loads) -->
+        <div id="main-content" style="display: none;">
+            <!-- Current conditions -->
+            <h3>📍 Current Conditions</h3>
+            <div class="grid grid-3" id="current-conditions">
+                <!-- Current score card -->
+                <div class="forecast-card">
+                    <div class="score-display" id="current-score">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                    <div id="current-metrics">
+                        <!-- Populated by JavaScript -->
+                    </div>
+                </div>
+                
+                <!-- Quick metrics -->
+                <div id="quick-metrics-1">
+                    <!-- Populated by JavaScript -->
+                </div>
+                
+                <div id="quick-metrics-2">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+            
+            <!-- Optimal windows section -->
+            <div id="optimal-windows-section" style="margin-top: 3rem;">
+                <h3>🎯 Optimal Kayaking Windows (Next 10 Days)</h3>
+                <div class="grid grid-2">
+                    <div>
+                        <h4>📅 Recommended Times</h4>
+                        <div id="windows-list">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                    </div>
+                    <div>
+                        <h4>📊 Window Summary</h4>
+                        <div id="windows-summary">
+                            <!-- Populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Charts section -->
+            <div style="margin-top: 3rem;">
+                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 2rem 0;">
+                <h3>📈 Detailed Forecasts</h3>
+                <div class="grid grid-2">
+                    <div class="chart-container">
+                        <h4>Kayakability Score Timeline</h4>
+                        <div id="timeline-chart"></div>
+                    </div>
+                    <div class="chart-container">
+                        <h4>Water Discharge Forecast</h4>
+                        <div id="discharge-chart"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tooltip for charts -->
+    <div class="tooltip" id="tooltip" style="display: none;"></div>
+    
+    <script>
+        // Global variables
+        let forecastData = {
+            historical: [],
+            forecast: [],
+            windows: []
+        };
+        let isUsingDefaultData = false;
+        
+        // Utility functions
+        function calculateKayakabilityScore(discharge, gageHeight) {
+            const optimalDischargeMin = 800;
+            const optimalDischargeMax = 2500;
+            const optimalGageMin = 2.5;
+            const optimalGageMax = 5.0;
+            
+            // Discharge score (60% weight)
+            let dischargeScore;
+            if (discharge >= optimalDischargeMin && discharge <= optimalDischargeMax) {
+                dischargeScore = 100;
+            } else if (discharge < optimalDischargeMin) {
+                dischargeScore = Math.max(0, 100 * Math.pow(discharge / optimalDischargeMin, 1.5));
+            } else {
+                const excessRatio = (discharge - optimalDischargeMax) / optimalDischargeMax;
+                dischargeScore = Math.max(0, 100 * Math.exp(-2 * excessRatio));
+            }
+            
+            // Gage height score (40% weight)
+            let gageScore;
+            if (gageHeight >= optimalGageMin && gageHeight <= optimalGageMax) {
+                gageScore = 100;
+            } else if (gageHeight < optimalGageMin) {
+                gageScore = Math.max(0, 100 * Math.pow(gageHeight / optimalGageMin, 2));
+            } else {
+                const excessRatio = (gageHeight - optimalGageMax) / optimalGageMax;
+                gageScore = Math.max(0, 100 * Math.exp(-1.5 * excessRatio));
+            }
+            
+            const finalScore = dischargeScore * 0.6 + gageScore * 0.4;
+            return Math.min(100, Math.max(0, finalScore));
+        }
+        
+        function getScoreInfo(score) {
+            if (isNaN(score) || score === null || score === undefined) {
+                return {
+                    icon: "❓",
+                    status: "Unknown",
+                    cssClass: "status-fair",
+                    color: "#64748b",
+                    statusClass: "unknown"
+                };
+            } else if (score >= 85) {
+                return {
+                    icon: "🟢",
+                    status: "Excellent",
+                    cssClass: "status-excellent",
+                    color: "#059669",
+                    statusClass: "excellent"
+                };
+            } else if (score >= 70) {
+                return {
+                    icon: "🔵",
+                    status: "Good",
+                    cssClass: "status-good",
+                    color: "#16a34a",
+                    statusClass: "good"
+                };
+            } else if (score >= 50) {
+                return {
+                    icon: "🟡",
+                    status: "Fair",
+                    cssClass: "status-fair",
+                    color: "#ca8a04",
+                    statusClass: "fair"
+                };
+            } else if (score >= 25) {
+                return {
+                    icon: "🟠",
+                    status: "Poor",
+                    cssClass: "status-poor",
+                    color: "#dc2626",
+                    statusClass: "poor"
+                };
+            } else {
+                return {
+                    icon: "🔴",
+                    status: "Dangerous",
+                    cssClass: "status-dangerous",
+                    color: "#991b1b",
+                    statusClass: "dangerous"
+                };
+            }
+        }
+        
+        function createSampleData() {
+            const now = new Date();
+            const historical = [];
+            const forecast = [];
+            const windows = [];
+            
+            const sites = [
+                {
+                    site_id: "01073500",
+                    site_name: "Merrimack River below Concord River at Lowell, MA",
+                    lat: 42.6334,
+                    lon: -71.3162
+                },
+                {
+                    site_id: "01100000",
+                    site_name: "Merrimack River at Lowell, MA",
+                    lat: 42.65,
+                    lon: -71.30
+                }
+            ];
+            
+            // Generate historical data (past 7 days)
+            for (let site of sites) {
+                for (let i = -168; i <= 0; i++) { // 168 hours = 7 days
+                    const timestamp = new Date(now.getTime() + i * 60 * 60 * 1000);
+                    const hourFactor = Math.sin(timestamp.getHours() * Math.PI / 12) * 0.2 + 1;
+                    const dayFactor = Math.sin(timestamp.getDate() * Math.PI / 15) * 0.3 + 1;
+                    
+                    const discharge = Math.max(300, (Math.random() * 600 + 1200) * hourFactor * dayFactor);
+                    const gageHeight = Math.max(1, (Math.random() * 1.6 + 2.7) * hourFactor);
+                    const kayakabilityScore = calculateKayakabilityScore(discharge, gageHeight);
+                    
+                    historical.push({
+                        timestamp: timestamp,
+                        site_id: site.site_id,
+                        site_name: site.site_name,
+                        discharge_cfs: discharge,
+                        gage_height_ft: gageHeight,
+                        lat: site.lat,
+                        lon: site.lon,
+                        kayakability_score: kayakabilityScore
+                    });
+                }
+            }
+            
+            // Generate forecast data (next 10 days)
+            for (let site of sites) {
+                for (let i = 1; i <= 240; i++) { // 240 hours = 10 days
+                    const timestamp = new Date(now.getTime() + i * 60 * 60 * 1000);
+                    const hourFactor = Math.sin(timestamp.getHours() * Math.PI / 12) * 0.2 + 1;
+                    const dayFactor = Math.sin(timestamp.getDate() * Math.PI / 15) * 0.3 + 1;
+                    
+                    const discharge = Math.max(300, (Math.random() * 500 + 1100) * hourFactor * dayFactor);
+                    const gageHeight = Math.max(1, (Math.random() * 1.4 + 2.6) * hourFactor);
+                    const kayakabilityScore = calculateKayakabilityScore(discharge, gageHeight);
+                    
+                    forecast.push({
+                        timestamp: timestamp,
+                        site_id: site.site_id,
+                        site_name: site.site_name,
+                        discharge_cfs: discharge,
+                        gage_height_ft: gageHeight,
+                        lat: site.lat,
+                        lon: site.lon,
+                        kayakability_score: kayakabilityScore,
+                        is_forecast: true
+                    });
+                }
+            }
+            
+            // Generate optimal windows
+            for (let site of sites) {
+                const siteForecast = forecast.filter(d => d.site_id === site.site_id);
+                const goodPeriods = siteForecast.filter(d => d.kayakability_score >= 70);
+                
+                if (goodPeriods.length > 0) {
+                    for (let j = 0; j < Math.min(5, Math.floor(goodPeriods.length / 3)); j++) {
+                        const startIdx = j * 3;
+                        if (startIdx < goodPeriods.length) {
+                            const startTime = goodPeriods[startIdx].timestamp;
+                            const endTime = new Date(startTime.getTime() + 3 * 60 * 60 * 1000);
+                            const windowData = goodPeriods.slice(startIdx, startIdx + 3);
+                            const avgScore = windowData.reduce((sum, d) => sum + d.kayakability_score, 0) / windowData.length;
+                            
+                            windows.push({
+                                site_id: site.site_id,
+                                site_name: site.site_name,
+                                start_time: startTime,
+                                end_time: endTime,
+                                duration_hours: 3,
+                                avg_score: avgScore,
+                                min_score: Math.min(...windowData.map(d => d.kayakability_score)),
+                                max_score: Math.max(...windowData.map(d => d.kayakability_score))
+                            });
+                        }
+                    }
+                }
+            }
+            
+            return { historical, forecast, windows };
+        }
+        
+        function loadData() {
+            // For this demo, we'll always use sample data
+            // In a real implementation, you'd try to load from CSV files first
+            const data = createSampleData();
+            forecastData = data;
+            isUsingDefaultData = true;
+            
+            // Update status indicator
+            const statusIndicator = document.getElementById('status-indicator');
+            statusIndicator.className = 'status-indicator sample';
+            statusIndicator.textContent = '📊 Currently displaying sample forecast data for demonstration';
+            
+            // Hide loading, show content
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('main-content').style.display = 'block';
+            
+            // Initialize dashboard
+            initializeDashboard();
+        }
+        
+        function initializeDashboard() {
+            updateCurrentConditions();
+            updateOptimalWindows();
+            createTimelineChart();
+            createDischargeChart();
+            
+            // Set up nighttime filter
+            const checkbox = document.getElementById('hide-nighttime');
+            checkbox.addEventListener('change', function() {
+                if (this.checked) {
+                    filterNighttimeHours();
+                } else {
+                    resetForecastData();
+                }
+                updateOptimalWindows();
+                createTimelineChart();
+                createDischargeChart();
+            });
+        }
+        
+        function filterNighttimeHours() {
+            // Filter forecast data to only show 7 AM to 7 PM
+            forecastData.forecast = forecastData.forecast.filter(d => {
+                const hour = d.timestamp.getHours();
+                return hour >= 7 && hour <= 19;
+            });
+        }
+        
+        function resetForecastData() {
+            // Reload original data
+            const data = createSampleData();
+            forecastData.forecast = data.forecast;
+        }
+        
+        function updateCurrentConditions() {
+            const latest = forecastData.historical[forecastData.historical.length - 1];
+            const scoreInfo = getScoreInfo(latest.kayakability_score);
+            
+            // Update current score display
+            const currentScore = document.getElementById('current-score');
+            currentScore.innerHTML = `
+                <div class="score-icon">${scoreInfo.icon}</div>
+                <div class="score-number" style="color: ${scoreInfo.color};">${Math.round(latest.kayakability_score)}</div>
+                <div class="score-status ${scoreInfo.cssClass}">${scoreInfo.status}</div>
+            `;
+            
+            // Update current metrics
+            const currentMetrics = document.getElementById('current-metrics');
+            const locationName = latest.site_name.split(' at ').pop();
+            const timeStr = latest.timestamp.toLocaleDateString('en-US', {
+                month: 'numeric',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit'
+            });
+            
+            currentMetrics.innerHTML = `
+                <div class="metric-row">
+                    <span class="metric-label">Location</span>
+                    <span class="metric-value">${locationName}</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Last Updated</span>
+                    <span class="metric-value">${timeStr}</span>
+                </div>
+            `;
+            
+            // Update quick metrics
+            const next24h = forecastData.forecast.filter(d => {
+                return d.timestamp <= new Date(Date.now() + 24 * 60 * 60 * 1000);
+            });
+            
+            if (next24h.length > 0) {
+                const avgScore = next24h.reduce((sum, d) => sum + d.kayakability_score, 0) / next24h.length;
+                const maxScore = Math.max(...next24h.map(d => d.kayakability_score));
+                
+                document.getElementById('quick-metrics-1').innerHTML = `
+                    <div class="forecast-card">
+                        <div style="text-align: center;">
+                            <div style="font-size: 1.5rem; color: #64748b;">Discharge</div>
+                            <div style="font-size: 2rem; font-weight: bold;">${Math.round(latest.discharge_cfs)} CFS</div>
+                        </div>
+                        <div style="text-align: center; margin-top: 1rem;">
+                            <div style="font-size: 1.5rem; color: #64748b;">Gage Height</div>
+                            <div style="font-size: 2rem; font-weight: bold;">${latest.gage_height_ft.toFixed(1)} ft</div>
+                        </div>
+                    </div>
+                `;
+                
+                document.getElementById('quick-metrics-2').innerHTML = `
+                    <div class="forecast-card">
+                        <div style="text-align: center;">
+                            <div style="font-size: 1.5rem; color: #64748b;">24h Avg Score</div>
+                            <div style="font-size: 2rem; font-weight: bold;">${Math.round(avgScore)}</div>
+                        </div>
+                        <div style="text-align: center; margin-top: 1rem;">
+                            <div style="font-size: 1.5rem; color: #64748b;">24h Peak Score</div>
+                            <div style="font-size: 2rem; font-weight: bold;">${Math.round(maxScore)}</div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        
+        function updateOptimalWindows() {
+            const windowsList = document.getElementById('windows-list');
+            const windowsSummary = document.getElementById('windows-summary');
+            
+            if (forecastData.windows.length === 0) {
+                document.getElementById('optimal-windows-section').innerHTML = `
+                    <h3>⚠️ No Optimal Windows Found</h3>
+                    <p>No kayaking windows with scores ≥70 were identified in the next 10 days. Check back later for updated forecasts.</p>
+                `;
+                return;
+            }
+            
+            // Display windows (top 10)
+            const topWindows = forecastData.windows.slice(0, 10);
+            windowsList.innerHTML = topWindows.map(window => {
+                const scoreInfo = getScoreInfo(window.avg_score);
+                const timeStr = formatWindowDisplay(window);
+                const locationName = window.site_name.split(' at ').pop();
+                
+                return `
+                    <div class="window-card ${scoreInfo.statusClass}">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <strong>${scoreInfo.icon} ${timeStr}</strong><br>
+                                <small style="color: #6b7280;">${locationName} • ${window.duration_hours.toFixed(1)} hours</small>
+                            </div>
+                            <div style="text-align: right;">
+                                <div style="font-size: 1.5rem; font-weight: bold; color: ${scoreInfo.color};">${Math.round(window.avg_score)}</div>
+                                <div style="font-size: 0.8rem; color: #6b7280;">Score</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            // Display summary
+            const totalWindows = forecastData.windows.length;
+            const excellentWindows = forecastData.windows.filter(w => w.avg_score >= 85).length;
+            const goodWindows = forecastData.windows.filter(w => w.avg_score >= 70).length;
+            
+            let summaryHtml = `
+                <div class="forecast-card">
+                    <div class="metric-row">
+                        <span class="metric-label">Total Windows</span>
+                        <span class="metric-value">${totalWindows}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Excellent (85+)</span>
+                        <span class="metric-value">${excellentWindows}</span>
+                    </div>
+                    <div class="metric-row">
+                        <span class="metric-label">Good (70+)</span>
+                        <span class="metric-value">${goodWindows}</span>
+                    </div>
+                </div>
+            `;
+            
+            if (forecastData.windows.length > 0) {
+                const bestWindow = forecastData.windows[0];
+                const bestTimeStr = formatWindowDisplay(bestWindow);
+                
+                summaryHtml += `
+                    <div class="alert success">
+                        <strong>🏆 Best Opportunity:</strong><br>
+                        ${bestTimeStr}<br>
+                        Score: ${Math.round(bestWindow.avg_score)}/100
+                    </div>
+                `;
+            }
+            
+            windowsSummary.innerHTML = summaryHtml;
+        }
+        
+        function formatWindowDisplay(window) {
+            const startTime = window.start_time;
+            const endTime = window.end_time;
+            
+            const startStr = startTime.toLocaleDateString('en-US', {
+                weekday: 'short',
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit'
+            });
+            
+            const endStr = endTime.toLocaleTimeString('en-US', {
+                hour: 'numeric',
+                minute: '2-digit'
+            });
+            
+            return `${startStr} - ${endStr}`;
+        }
+        
+        function createTimelineChart() {
+            const container = document.getElementById('timeline-chart');
+            container.innerHTML = ''; // Clear previous chart
+            
+            const margin = { top: 20, right: 30, bottom: 40, left: 50 };
+            const width = container.offsetWidth - margin.left - margin.right;
+            const height = 300 - margin.top - margin.bottom;
+            
+            const svg = d3.select(container)
+                .append('svg')
+                .attr('width', width + margin.left + margin.right)
+                .attr('height', height + margin.top + margin.bottom);
+            
+            const g = svg.append('g')
+                .attr('transform', `translate(${margin.left},${margin.top})`);
+            
+            // Combine historical and forecast data
+            const allData = [...forecastData.historical, ...forecastData.forecast];
+            
+            // Create scales
+            const xScale = d3.scaleTime()
+                .domain(d3.extent(allData, d => d.timestamp))
+                .range([0, width]);
+            
+            const yScale = d3.scaleLinear()
+                .domain([0, 100])
+                .range([height, 0]);
+            
+            // Create line generator
+            const line = d3.line()
+                .x(d => xScale(d.timestamp))
+                .y(d => yScale(d.kayakability_score))
+                .curve(d3.curveMonotoneX);
+            
+            // Add axes
+            g.append('g')
+                .attr('class', 'axis')
+                .attr('transform', `translate(0,${height})`)
+                .call(d3.axisBottom(xScale).tickFormat(d3.timeFormat('%m/%d')));
+            
+            g.append('g')
+                .attr('class', 'axis')
+                .call(d3.axisLeft(yScale));
+            
+            // Add axis labels
+            g.append('text')
+                .attr('transform', 'rotate(-90)')
+                .attr('y', 0 - margin.left)
+                .attr('x', 0 - (height / 2))
+                .attr('dy', '1em')
+                .style('text-anchor', 'middle')
+                .style('font-size', '12px')
+                .text('Kayakability Score');
+            
+            // Add score zone backgrounds
+            const zones = [
+                { min: 85, max: 100, color: '#ecfdf5', label: 'Excellent' },
+                { min: 70, max: 85, color: '#f0f9ff', label: 'Good' },
+                { min: 50, max: 70, color: '#fefce8', label: 'Fair' },
+                { min: 25, max: 50, color: '#fef2f2', label: 'Poor' },
+                { min: 0, max: 25, color: '#fef1f1', label: 'Dangerous' }
+            ];
+            
+            zones.forEach(zone => {
+                g.append('rect')
+                    .attr('x', 0)
+                    .attr('y', yScale(zone.max))
+                    .attr('width', width)
+                    .attr('height', yScale(zone.min) - yScale(zone.max))
+                    .attr('fill', zone.color)
+                    .attr('opacity', 0.3);
+            });
+            
+            // Draw historical line
+            if (forecastData.historical.length > 0) {
+                g.append('path')
+                    .datum(forecastData.historical)
+                    .attr('class', 'line historical')
+                    .attr('d', line);
+            }
+            
+            // Draw forecast line
+            if (forecastData.forecast.length > 0) {
+                g.append('path')
+                    .datum(forecastData.forecast)
+                    .attr('class', 'line forecast')
+                    .attr('d', line);
+            }
+            
+            // Add tooltip
+            const tooltip = d3.select('#tooltip');
+            
+            // Add dots for interaction
+            g.selectAll('.dot')
+                .data(allData)
+                .enter().append('circle')
+                .attr('class', 'dot')
+                .attr('cx', d => xScale(d.timestamp))
+                .attr('cy', d => yScale(d.kayakability_score))
+                .attr('r', 3)
+                .attr('fill', d => d.is_forecast ? '#f59e0b' : '#3b82f6')
+                .attr('opacity', 0.7)
+                .on('mouseover', function(event, d) {
+                    tooltip.transition().duration(200).style('display', 'block');
+                    tooltip.html(`
+                        <strong>${d.timestamp.toLocaleDateString()} ${d.timestamp.toLocaleTimeString()}</strong><br>
+                        Score: ${Math.round(d.kayakability_score)}<br>
+                        Discharge: ${Math.round(d.discharge_cfs)} CFS<br>
+                        Gage Height: ${d.gage_height_ft.toFixed(1)} ft
+                    `)
+                    .style('left', (event.pageX + 10) + 'px')
+                    .style('top', (event.pageY - 28) + 'px');
+                })
+                .on('mouseout', function() {
+                    tooltip.transition().duration(500).style('display', 'none');
+                });
+        }
+        
+        function createDischargeChart() {
+            const container = document.getElementById('discharge-chart');
+            container.innerHTML = ''; // Clear previous chart
+            
+            const margin = { top: 20, right: 30, bottom: 40, left: 60 };
+            const width = container.offsetWidth - margin.left - margin.right;
+            const height = 300 - margin.top - margin.bottom;
+            
+            const svg = d3.select(container)
+                .append('svg')
+                .attr('width', width + margin.left + margin.right)
+                .attr('height', height + margin.top + margin.bottom);
+            
+            const g = svg.append('g')
+                .attr('transform', `translate(${margin.left},${margin.top})`);
+            
+            // Combine historical and forecast data
+            const allData = [...forecastData.historical, ...forecastData.forecast];
+            
+            // Create scales
+            const xScale = d3.scaleTime()
+                .domain(d3.extent(allData, d => d.timestamp))
+                .range([0, width]);
+            
+            const yScale = d3.scaleLinear()
+                .domain(d3.extent(allData, d => d.discharge_cfs))
+                .range([height, 0]);
+            
+            // Create line generator
+            const line = d3.line()
+                .x(d => xScale(d.timestamp))
+                .y(d => yScale(d.discharge_cfs))
+                .curve(d3.curveMonotoneX);
+            
+            // Add axes
+            g.append('g')
+                .attr('class', 'axis')
+                .attr('transform', `translate(0,${height})`)
+                .call(d3.axisBottom(xScale).tickFormat(d3.timeFormat('%m/%d')));
+            
+            g.append('g')
+                .attr('class', 'axis')
+                .call(d3.axisLeft(yScale));
+            
+            // Add axis labels
+            g.append('text')
+                .attr('transform', 'rotate(-90)')
+                .attr('y', 0 - margin.left)
+                .attr('x', 0 - (height / 2))
+                .attr('dy', '1em')
+                .style('text-anchor', 'middle')
+                .style('font-size', '12px')
+                .text('Discharge (CFS)');
+            
+            // Add optimal discharge zone
+            const optimalMin = 800;
+            const optimalMax = 2500;
+            
+            g.append('rect')
+                .attr('x', 0)
+                .attr('y', yScale(optimalMax))
+                .attr('width', width)
+                .attr('height', yScale(optimalMin) - yScale(optimalMax))
+                .attr('fill', '#10b981')
+                .attr('opacity', 0.2);
+            
+            // Add zone label
+            g.append('text')
+                .attr('x', width - 5)
+                .attr('y', yScale((optimalMin + optimalMax) / 2))
+                .attr('dy', '0.3em')
+                .style('text-anchor', 'end')
+                .style('font-size', '12px')
+                .style('fill', '#059669')
+                .text('Optimal Range');
+            
+            // Draw historical line
+            if (forecastData.historical.length > 0) {
+                g.append('path')
+                    .datum(forecastData.historical)
+                    .attr('class', 'line historical')
+                    .attr('d', line);
+            }
+            
+            // Draw forecast line
+            if (forecastData.forecast.length > 0) {
+                g.append('path')
+                    .datum(forecastData.forecast)
+                    .attr('class', 'line forecast')
+                    .attr('d', line);
+            }
+            
+            // Add tooltip
+            const tooltip = d3.select('#tooltip');
+            
+            // Add dots for interaction
+            g.selectAll('.dot')
+                .data(allData)
+                .enter().append('circle')
+                .attr('class', 'dot')
+                .attr('cx', d => xScale(d.timestamp))
+                .attr('cy', d => yScale(d.discharge_cfs))
+                .attr('r', 3)
+                .attr('fill', d => d.is_forecast ? '#f59e0b' : '#3b82f6')
+                .attr('opacity', 0.7)
+                .on('mouseover', function(event, d) {
+                    tooltip.transition().duration(200).style('display', 'block');
+                    tooltip.html(`
+                        <strong>${d.timestamp.toLocaleDateString()} ${d.timestamp.toLocaleTimeString()}</strong><br>
+                        Discharge: ${Math.round(d.discharge_cfs)} CFS<br>
+                        Gage Height: ${d.gage_height_ft.toFixed(1)} ft<br>
+                        Score: ${Math.round(d.kayakability_score)}
+                    `)
+                    .style('left', (event.pageX + 10) + 'px')
+                    .style('top', (event.pageY - 28) + 'px');
+                })
+                .on('mouseout', function() {
+                    tooltip.transition().duration(500).style('display', 'none');
+                });
+        }
+        
+        // Initialize the dashboard when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            loadData();
+        });
+        
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            if (document.getElementById('main-content').style.display !== 'none') {
+                createTimelineChart();
+                createDischargeChart();
+            }
+        });
+    </script>
+</body>
+</html>
