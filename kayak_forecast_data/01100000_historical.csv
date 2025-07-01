@@ -1,7 +1,4 @@
 datetime,discharge_cfs,gage_height_ft,site_id,site_name,kayakability_score
-2025-06-24 09:30:00-04:00,6700.0,43.75,01100000,"Merrimack River at Lowell, MA",8
-2025-06-24 09:45:00-04:00,6670.0,43.74,01100000,"Merrimack River at Lowell, MA",8
-2025-06-24 10:00:00-04:00,6630.0,43.73,01100000,"Merrimack River at Lowell, MA",8
 2025-06-24 10:15:00-04:00,6600.0,43.72,01100000,"Merrimack River at Lowell, MA",8
 2025-06-24 10:30:00-04:00,6570.0,43.71,01100000,"Merrimack River at Lowell, MA",8
 2025-06-24 10:45:00-04:00,6510.0,43.69,01100000,"Merrimack River at Lowell, MA",8
@@ -652,3 +649,7 @@ datetime,discharge_cfs,gage_height_ft,site_id,site_name,kayakability_score
 2025-07-01 04:00:00-04:00,3220.0,42.59,01100000,"Merrimack River at Lowell, MA",31
 2025-07-01 04:15:00-04:00,3240.0,42.6,01100000,"Merrimack River at Lowell, MA",30
 2025-07-01 04:30:00-04:00,3300.0,42.62,01100000,"Merrimack River at Lowell, MA",29
+2025-07-01 04:45:00-04:00,3350.0,42.64,01100000,"Merrimack River at Lowell, MA",29
+2025-07-01 05:00:00-04:00,3380.0,42.65,01100000,"Merrimack River at Lowell, MA",28
+2025-07-01 05:15:00-04:00,3440.0,42.67,01100000,"Merrimack River at Lowell, MA",27
+2025-07-01 05:30:00-04:00,3460.0,42.68,01100000,"Merrimack River at Lowell, MA",27
