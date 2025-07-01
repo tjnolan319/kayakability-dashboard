@@ -24,8 +24,13 @@ datetime,site_id,site_name,temperature_f,humidity_percent,wind_speed_mph,precipi
 2025-06-30 22:20:36.155998+00:00,1096500,"Merrimack River at North Chelmsford, MA",70.0,50.0,5.0,0.0,Clear
 2025-06-30 22:20:37.829319+00:00,1094000,"Merrimack River near Goffs Falls below Manchester, NH",70.0,50.0,5.0,0.0,Clear
 2025-06-30 22:20:39.355462+00:00,1092000,"Merrimack River at Franklin Junction, NH",70.0,50.0,5.0,0.0,Clear
-2025-06-30 23:11:34.911314+00:00,01073500,"Merrimack River below Concord River at Lowell, MA",70.0,50.0,5.0,0.0,Clear
-2025-06-30 23:11:36.650630+00:00,01100000,"Merrimack River at Lowell, MA",70.0,50.0,5.0,0.0,Clear
-2025-06-30 23:11:38.404433+00:00,01096500,"Merrimack River at North Chelmsford, MA",70.0,50.0,5.0,0.0,Clear
-2025-06-30 23:11:40.182235+00:00,01094000,"Merrimack River near Goffs Falls below Manchester, NH",70.0,50.0,5.0,0.0,Clear
-2025-06-30 23:11:42.011993+00:00,01092000,"Merrimack River at Franklin Junction, NH",70.0,50.0,5.0,0.0,Clear
+2025-06-30 23:11:34.911314+00:00,1073500,"Merrimack River below Concord River at Lowell, MA",70.0,50.0,5.0,0.0,Clear
+2025-06-30 23:11:36.650630+00:00,1100000,"Merrimack River at Lowell, MA",70.0,50.0,5.0,0.0,Clear
+2025-06-30 23:11:38.404433+00:00,1096500,"Merrimack River at North Chelmsford, MA",70.0,50.0,5.0,0.0,Clear
+2025-06-30 23:11:40.182235+00:00,1094000,"Merrimack River near Goffs Falls below Manchester, NH",70.0,50.0,5.0,0.0,Clear
+2025-06-30 23:11:42.011993+00:00,1092000,"Merrimack River at Franklin Junction, NH",70.0,50.0,5.0,0.0,Clear
+2025-07-01 00:22:29.769777+00:00,01073500,"Merrimack River below Concord River at Lowell, MA",70.0,50.0,5.0,0.0,Clear
+2025-07-01 00:22:31.472707+00:00,01100000,"Merrimack River at Lowell, MA",70.0,50.0,5.0,0.0,Clear
+2025-07-01 00:22:33.174092+00:00,01096500,"Merrimack River at North Chelmsford, MA",70.0,50.0,5.0,0.0,Clear
+2025-07-01 00:22:34.732937+00:00,01094000,"Merrimack River near Goffs Falls below Manchester, NH",70.0,50.0,5.0,0.0,Clear
+2025-07-01 00:22:36.431145+00:00,01092000,"Merrimack River at Franklin Junction, NH",70.0,50.0,5.0,0.0,Clear
