@@ -1,2 +1,2 @@
 site_id,site_name,start_time,end_time,duration_hours,avg_score,max_score,min_score,avg_discharge,avg_gage,score_trend
-01096500,"Merrimack River at North Chelmsford, MA",2025-07-09 12:45:00-04:00,2025-07-10 20:45:00-04:00,33,63.9,67,60,449.4,1.96,stable
+01096500,"Merrimack River at North Chelmsford, MA",2025-07-06 09:45:00-04:00,2025-07-11 09:45:00-04:00,121,99.4,100,63,-115765.1,-296.04,stable
