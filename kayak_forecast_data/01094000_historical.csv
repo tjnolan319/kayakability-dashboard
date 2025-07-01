@@ -1,9 +1,4 @@
 datetime,discharge_cfs,gage_height_ft,site_id,site_name,kayakability_score
-2025-06-24 15:15:00-04:00,168.0,2.95,01094000,"Merrimack River near Goffs Falls below Manchester, NH",54
-2025-06-24 15:30:00-04:00,168.0,2.95,01094000,"Merrimack River near Goffs Falls below Manchester, NH",54
-2025-06-24 15:45:00-04:00,168.0,2.95,01094000,"Merrimack River near Goffs Falls below Manchester, NH",54
-2025-06-24 16:00:00-04:00,166.0,2.94,01094000,"Merrimack River near Goffs Falls below Manchester, NH",54
-2025-06-24 16:15:00-04:00,166.0,2.94,01094000,"Merrimack River near Goffs Falls below Manchester, NH",54
 2025-06-24 16:30:00-04:00,168.0,2.95,01094000,"Merrimack River near Goffs Falls below Manchester, NH",54
 2025-06-24 16:45:00-04:00,168.0,2.95,01094000,"Merrimack River near Goffs Falls below Manchester, NH",54
 2025-06-24 17:00:00-04:00,166.0,2.94,01094000,"Merrimack River near Goffs Falls below Manchester, NH",54
@@ -652,3 +647,7 @@ datetime,discharge_cfs,gage_height_ft,site_id,site_name,kayakability_score
 2025-07-01 10:00:00-04:00,117.0,2.74,01094000,"Merrimack River near Goffs Falls below Manchester, NH",52
 2025-07-01 10:15:00-04:00,117.0,2.74,01094000,"Merrimack River near Goffs Falls below Manchester, NH",52
 2025-07-01 10:30:00-04:00,117.0,2.74,01094000,"Merrimack River near Goffs Falls below Manchester, NH",52
+2025-07-01 10:45:00-04:00,117.0,2.74,01094000,"Merrimack River near Goffs Falls below Manchester, NH",52
+2025-07-01 11:00:00-04:00,117.0,2.74,01094000,"Merrimack River near Goffs Falls below Manchester, NH",52
+2025-07-01 11:15:00-04:00,117.0,2.74,01094000,"Merrimack River near Goffs Falls below Manchester, NH",52
+2025-07-01 11:30:00-04:00,117.0,2.74,01094000,"Merrimack River near Goffs Falls below Manchester, NH",52
