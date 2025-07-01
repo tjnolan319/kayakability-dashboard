@@ -676,7 +676,7 @@ if 'historical' in data and 'forecast' in data:
             st.metric("24h Avg Score", f"{avg_score:.0f}")
             st.metric("24h Peak Score", f"{max_score:.0f}")
 
-    # Optimal windows section
+   # Optimal windows section
     if 'windows' in data and len(data['windows']) > 0:
         st.markdown("### 🎯 Optimal Kayaking Windows (Next 10 Days)")
         
@@ -727,13 +727,13 @@ if 'historical' in data and 'forecast' in data:
                 </div>
                 """, unsafe_allow_html=True)
     
-       else:
-            st.markdown("### ⚠️ No Optimal Windows Found")
-            st.markdown("No kayaking windows with scores ≥70 were identified in the next 10 days. Check back later for updated forecasts.")
+    else:
+        st.markdown("### ⚠️ No Optimal Windows Found")
+        st.markdown("No kayaking windows with scores ≥70 were identified in the next 10 days. Check back later for updated forecasts.")
     
-        # Charts section
-        st.markdown("---")
-        st.markdown("### 📈 Detailed Forecasts")
+    # Charts section
+    st.markdown("---")
+    st.markdown("### 📈 Detailed Forecasts")
         
         col1, col2 = st.columns(2, gap="large")
         
