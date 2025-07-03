@@ -1,8 +1,4 @@
 datetime,discharge_cfs,gage_height_ft,site_id,site_name,kayakability_score
-2025-06-26 19:15:00-04:00,2890.0,4.18,01092000,"Merrimack River at Franklin Junction, NH",55
-2025-06-26 19:30:00-04:00,2910.0,4.19,01092000,"Merrimack River at Franklin Junction, NH",54
-2025-06-26 19:45:00-04:00,2940.0,4.2,01092000,"Merrimack River at Franklin Junction, NH",54
-2025-06-26 20:00:00-04:00,3020.0,4.24,01092000,"Merrimack River at Franklin Junction, NH",52
 2025-06-26 20:15:00-04:00,3100.0,4.28,01092000,"Merrimack River at Franklin Junction, NH",51
 2025-06-26 20:30:00-04:00,3180.0,4.32,01092000,"Merrimack River at Franklin Junction, NH",50
 2025-06-26 20:45:00-04:00,3220.0,4.34,01092000,"Merrimack River at Franklin Junction, NH",49
@@ -653,3 +649,7 @@ datetime,discharge_cfs,gage_height_ft,site_id,site_name,kayakability_score
 2025-07-03 14:00:00-04:00,2570.0,4.01,01092000,"Merrimack River at Franklin Junction, NH",62
 2025-07-03 14:15:00-04:00,2510.0,3.98,01092000,"Merrimack River at Franklin Junction, NH",63
 2025-07-03 14:30:00-04:00,2480.0,3.96,01092000,"Merrimack River at Franklin Junction, NH",64
+2025-07-03 14:45:00-04:00,2440.0,3.94,01092000,"Merrimack River at Franklin Junction, NH",65
+2025-07-03 15:00:00-04:00,2420.0,3.93,01092000,"Merrimack River at Franklin Junction, NH",66
+2025-07-03 15:15:00-04:00,2400.0,3.92,01092000,"Merrimack River at Franklin Junction, NH",67
+2025-07-03 15:30:00-04:00,2400.0,3.92,01092000,"Merrimack River at Franklin Junction, NH",67
