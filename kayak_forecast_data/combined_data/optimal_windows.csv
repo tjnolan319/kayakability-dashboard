@@ -1,3 +1,3 @@
 site_id,site_name,start_time,end_time,duration_hours,avg_score,max_score,min_score,avg_discharge,avg_gage,score_trend
-01100000,"Merrimack River at Lowell, MA",2025-07-13 21:30:00-04:00,2025-07-13 22:30:00-04:00,2,64.5,67,62,-1127.9,40.93,stable
-01092000,"Merrimack River at Franklin Junction, NH",2025-07-03 22:30:00-04:00,2025-07-07 13:30:00-04:00,88,63.6,69,60,2520.3,3.97,stable
+01100000,"Merrimack River at Lowell, MA",2025-07-13 21:30:00-04:00,2025-07-13 22:30:00-04:00,2,65.0,67,63,-1133.4,40.92,stable
+01092000,"Merrimack River at Franklin Junction, NH",2025-07-03 23:30:00-04:00,2025-07-07 14:30:00-04:00,88,64.6,71,60,2490.2,3.95,stable
