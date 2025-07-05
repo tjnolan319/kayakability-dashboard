@@ -1,9 +1,4 @@
 datetime,discharge_cfs,gage_height_ft,site_id,site_name,kayakability_score
-2025-06-28 11:15:00-04:00,72.5,1.43,01073500,"Merrimack River below Concord River at Lowell, MA",26
-2025-06-28 11:30:00-04:00,72.5,1.43,01073500,"Merrimack River below Concord River at Lowell, MA",26
-2025-06-28 11:45:00-04:00,72.5,1.43,01073500,"Merrimack River below Concord River at Lowell, MA",26
-2025-06-28 12:00:00-04:00,72.5,1.43,01073500,"Merrimack River below Concord River at Lowell, MA",26
-2025-06-28 12:15:00-04:00,72.5,1.43,01073500,"Merrimack River below Concord River at Lowell, MA",26
 2025-06-28 12:30:00-04:00,72.5,1.43,01073500,"Merrimack River below Concord River at Lowell, MA",26
 2025-06-28 12:45:00-04:00,71.1,1.42,01073500,"Merrimack River below Concord River at Lowell, MA",26
 2025-06-28 13:00:00-04:00,71.1,1.42,01073500,"Merrimack River below Concord River at Lowell, MA",26
@@ -652,3 +647,7 @@ datetime,discharge_cfs,gage_height_ft,site_id,site_name,kayakability_score
 2025-07-05 05:45:00-04:00,47.4,1.23,01073500,"Merrimack River below Concord River at Lowell, MA",19
 2025-07-05 06:00:00-04:00,47.4,1.23,01073500,"Merrimack River below Concord River at Lowell, MA",19
 2025-07-05 06:15:00-04:00,47.4,1.23,01073500,"Merrimack River below Concord River at Lowell, MA",19
+2025-07-05 06:30:00-04:00,47.4,1.23,01073500,"Merrimack River below Concord River at Lowell, MA",19
+2025-07-05 06:45:00-04:00,47.4,1.23,01073500,"Merrimack River below Concord River at Lowell, MA",19
+2025-07-05 07:00:00-04:00,47.4,1.23,01073500,"Merrimack River below Concord River at Lowell, MA",19
+2025-07-05 07:15:00-04:00,47.4,1.23,01073500,"Merrimack River below Concord River at Lowell, MA",19
