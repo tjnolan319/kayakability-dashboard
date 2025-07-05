@@ -1,2 +1,2 @@
 site_id,site_name,start_time,end_time,duration_hours,avg_score,max_score,min_score,avg_discharge,avg_gage,score_trend
-01092000,"Merrimack River at Franklin Junction, NH",2025-07-05 10:45:00-04:00,2025-07-15 09:45:00-04:00,240,78.0,83,74,2010.9,3.66,stable
+01092000,"Merrimack River at Franklin Junction, NH",2025-07-05 11:30:00-04:00,2025-07-15 10:30:00-04:00,240,78.1,83,74,2006.4,3.66,stable
