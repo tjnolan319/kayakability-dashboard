@@ -1,8 +1,4 @@
 datetime,discharge_cfs,gage_height_ft,site_id,site_name,kayakability_score
-2025-06-28 02:45:00-04:00,291.0,1.59,01096500,"Merrimack River at North Chelmsford, MA",38
-2025-06-28 03:00:00-04:00,291.0,1.59,01096500,"Merrimack River at North Chelmsford, MA",38
-2025-06-28 03:15:00-04:00,291.0,1.59,01096500,"Merrimack River at North Chelmsford, MA",38
-2025-06-28 03:30:00-04:00,291.0,1.59,01096500,"Merrimack River at North Chelmsford, MA",38
 2025-06-28 03:45:00-04:00,288.0,1.58,01096500,"Merrimack River at North Chelmsford, MA",38
 2025-06-28 04:00:00-04:00,291.0,1.59,01096500,"Merrimack River at North Chelmsford, MA",38
 2025-06-28 04:15:00-04:00,291.0,1.59,01096500,"Merrimack River at North Chelmsford, MA",38
@@ -652,3 +648,7 @@ datetime,discharge_cfs,gage_height_ft,site_id,site_name,kayakability_score
 2025-07-04 21:15:00-04:00,273.0,1.53,01096500,"Merrimack River at North Chelmsford, MA",35
 2025-07-04 21:30:00-04:00,273.0,1.53,01096500,"Merrimack River at North Chelmsford, MA",35
 2025-07-04 21:45:00-04:00,273.0,1.53,01096500,"Merrimack River at North Chelmsford, MA",35
+2025-07-04 22:00:00-04:00,273.0,1.53,01096500,"Merrimack River at North Chelmsford, MA",35
+2025-07-04 22:15:00-04:00,273.0,1.53,01096500,"Merrimack River at North Chelmsford, MA",35
+2025-07-04 22:30:00-04:00,273.0,1.53,01096500,"Merrimack River at North Chelmsford, MA",35
+2025-07-04 22:45:00-04:00,273.0,1.53,01096500,"Merrimack River at North Chelmsford, MA",35
